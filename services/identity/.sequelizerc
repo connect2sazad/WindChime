@@ -1,0 +1,42 @@
+/**
+ * =============================================================================
+ *
+ *                              connect2sazad
+ *
+ * =============================================================================
+ *
+ *  File          : .sequelizerc
+ *  Module        : Database Configuration
+ *  Type          : Sequelize CLI Configuration
+ *
+ *  -----------------------------------------------------------------------------
+ *  DESCRIPTION
+ *  -----------------------------------------------------------------------------
+ *
+ *  Configures the directory paths used by Sequelize CLI for database
+ *  configuration, migrations, models, and seeders.
+ *
+ *  -----------------------------------------------------------------------------
+ *  RESPONSIBILITIES
+ *  -----------------------------------------------------------------------------
+ *
+ *  - Define the Sequelize CLI configuration file path
+ *  - Define the migrations directory
+ *  - Define the models directory
+ *  - Define the seeders directory
+ *
+ *  -----------------------------------------------------------------------------
+ *
+ *  Author        : connect2sazad
+ *
+ * =============================================================================
+ */
+
+const path = require("path");
+
+module.exports = {
+  config: path.resolve("config", "sequelize-cli.cjs"),
+  "migrations-path": path.resolve("migrations"),
+  "models-path": path.resolve("models"),
+  "seeders-path": path.resolve("seeders"),
+};
