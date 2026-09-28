@@ -177,6 +177,24 @@ class AuthController {
 
     }
 
+    async self(req, res, next) {
+        try {
+
+            const user = Schemas.UserSchema.parse(req.user.toJSON());
+            res.set("Cache-Control", "no-store");
+
+            return res.status(utils.HTTP_STATUS.HTTP_200_OK.status_code).json(
+                utils.helpers.structurize_response(true,
+                    "Authenticated user retrieved",
+                    user
+                )
+            );
+
+        } catch (e) {
+            return next(e);
+        }
+    }
+
     async reset_password(req, res, next) {
 
         try {

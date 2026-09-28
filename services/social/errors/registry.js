@@ -48,7 +48,7 @@ import ServiceUnavailableException from './ServiceUnavailableException.js';
 
 import TooManyRequestsException from './TooManyRequestsException.js';
 
-export default {
+const errors = {
     TooManyRequestsException,
     ServiceUnavailableException,
     ForbiddenException,
@@ -60,3 +60,5 @@ export default {
     ConflictException,
     UnauthorizedException,
 };
+
+export default errors;

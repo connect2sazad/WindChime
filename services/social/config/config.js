@@ -64,8 +64,12 @@ const config = new Proxy({}, {
         return value;
     }
 });
+
 export function validateConfig() {
-    for (const name of ['PROJECT_NAME','PROJECT_TITLE','PORT','ENVIRONMENT','API_PREFIX','API_VERSION',
-        'JWT_SECRET_KEY','JWT_EXPIRES_IN','LOGIN_LIMIT','DB_DIALECT','DB_HOST','DB_NAME','DB_PORT','DB_USER','DB_PASSWORD','ALLOWED_ORIGINS']) void config[name];
+    for (const name of [
+        'PROJECT_NAME','PROJECT_TITLE','PORT','ENVIRONMENT','API_PREFIX','API_VERSION',
+        'IDENTITY_URL','DB_DIALECT','DB_HOST','DB_NAME','DB_PORT',
+        'DB_USER','DB_PASSWORD','ALLOWED_ORIGINS'
+    ]) void config[name];
 }
 export default config;

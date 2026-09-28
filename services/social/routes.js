@@ -39,6 +39,7 @@ import config from './config/config.js';
 
 // routes
 import routes from './routes/registry.js';
+import Middlewares from './middlewares/registry.js';
 
 const router = express.Router();
 
@@ -54,6 +55,13 @@ router.get('/', (req, res) => {
 });
 
 router.use(routes.health);
+
+router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json(
+        utils.helpers.structurize_response(true, 'Social authentication successful', req.user)
+    );
+});
 
 // other api
 router.use(config.API_PREFIX, routes.auth);

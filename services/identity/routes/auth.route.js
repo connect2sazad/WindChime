@@ -41,12 +41,15 @@ import express from "express";
 
 import Middlewares from "../middlewares/registry.js";
 import Controllers from "../controllers/registry.js";
+import Schemas from "../schemas/registry.js";
+import utils from "../utils/registry.js";
 
 const router = express.Router();
 
 const AUTH = "/auth";
 const AUTH_LOGIN = AUTH + "/login";
 const AUTH_REGISTER = AUTH + "/register";
+const AUTH_ME = AUTH + "/me";
 const AUTH_LOGOUT = AUTH + "/logout";
 
 router.post(
@@ -65,6 +68,18 @@ router.post(
     AUTH_REGISTER,
     async (req, res, next) => {
         await Controllers.auth_controller.register(
+            req,
+            res,
+            next
+        );
+    }
+);
+
+router.get(
+    AUTH_ME,
+    Middlewares.JWTTokenization.authenticate,
+    async (req, res, next) => {
+        await Controllers.auth_controller.self(
             req,
             res,
             next
