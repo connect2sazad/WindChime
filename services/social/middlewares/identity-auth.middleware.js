@@ -43,7 +43,7 @@ export default async function identityAuth(req, res, next) {
             throw new errors.ServiceUnavailableException('Identity verification failed');
         }
 
-        req.user = {
+        req.auth = {
             id: body.data.id,
             username: body.data.username,
             name: body.data.name,

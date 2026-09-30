@@ -74,11 +74,11 @@ export const BooleanQuerySchema = z.preprocess(
             return undefined;
         }
 
-        if (value === true || value === "true" || value === "1") {
+        if (value === true || value === "true" || value === "1" || value === "on") {
             return true;
         }
 
-        if (value === false || value === "false" || value === "0") {
+        if (value === false || value === "false" || value === "0" || value === "off") {
             return false;
         }
 

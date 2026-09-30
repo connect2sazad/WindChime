@@ -36,11 +36,13 @@
 import * as helpers from './helpers.js';
 import BaseMigration from './base.migration.js';
 import HTTP_STATUS from './status_codes.js';
+import Validations from './validation.js';
 
 const utils = {
     helpers,
     BaseMigration,
     HTTP_STATUS,
+    Validations
 };
 
 export default utils;

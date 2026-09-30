@@ -63,9 +63,8 @@ router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
     );
 });
 
-// other api
-router.use(config.API_PREFIX, routes.auth);
-router.use(config.API_PREFIX, routes.users);
+router.use(config.API_PREFIX, routes.posts);
+router.use(config.API_PREFIX, routes.comments);
 
 
 export default router;

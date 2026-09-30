@@ -34,21 +34,20 @@
  * =============================================================================
  */
 
-import User from "./user.model.js";
-import TokenBlacklist from "./blacklist-token.model.js";
+import Post from "./post.model.js";
+import Comment from "./comment.model.js";
 
-// Associate TokenBlacklist & User
-TokenBlacklist.belongsTo(User, {
-    foreignKey: 'user_id',
-    as: 'owner',
+Comment.belongsTo(Post, {
+    foreignKey: 'post_id',
+    as: 'post'
 });
 
-User.hasMany(TokenBlacklist, {
-    foreignKey: 'user_id',
-    as: 'blacklisted_tokens',
+Post.hasMany(Comment, {
+    foreignKey: 'post_id',
+    as: 'comments'
 });
 
 export {
-    User,
-    TokenBlacklist
+    Post,
+    Comment
 };

@@ -43,8 +43,6 @@ import {
 
 import schemas from './responses.js';
 import health from './health.openapi.js';
-import './auth.openapi.js';
-import './users.openapi.js';
 
 export {z};
 

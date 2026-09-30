@@ -33,18 +33,17 @@
  * =============================================================================
  */
 
-import AuthController from './auth.controller.js';
 import BaseController from './base.controller.js';
-import UserController from './user.controller.js';
+import CommentController from './comment.controller.js';
+import PostController from './post.controller.js';
 
-
-const user_controller = new UserController();
-const auth_controller = new AuthController();
+const post_controller = new PostController();
+const comment_controller = new CommentController();
 
 const Controllers = {
     BaseController,
-    user_controller,
-    auth_controller
+    post_controller,
+    comment_controller,
 };
 
 export default Controllers;

@@ -35,13 +35,12 @@
  */
 
 import './associations.js';
-
-import User from "./user.model.js";
-import TokenBlacklist from "./blacklist-token.model.js";
+import Comment from './comment.model.js';
+import Post from './post.model.js';
 
 const Models = {
-    User,
-    TokenBlacklist
+    Post,
+    Comment
 };
 
 export default Models;

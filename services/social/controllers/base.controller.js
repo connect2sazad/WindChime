@@ -48,13 +48,12 @@ import {
 } from "sequelize";
 
 import errors from '../errors/registry.js';
-import { parseRequest } from '../utils/validation.js';
 import utils from '../utils/registry.js';
 import Schemas from '../schemas/registry.js';
 
 class BaseController {
 
-    constructor(model, { schema = null, createSchema = null, updateSchema = null, creator = false, includes = null, searchFields = [], searchConditions = null } = {}) {
+    constructor(model, { schema = null, createSchema = null, updateSchema = null, creator = false, includes = null, searchFields = [], searchConditions = null, idParam = 'id', } = {}) {
         this.model = model;
         this.schema = schema;
         this.createSchema = createSchema;
@@ -63,6 +62,7 @@ class BaseController {
         this.includes = includes;
         this.searchFields = searchFields;
         this.searchConditions = searchConditions;
+        this.idParam = idParam;
     }
 
     serialize(record, schema = this.schema) {
@@ -85,47 +85,56 @@ class BaseController {
 
     }
 
+    getRequestId(req) {
+
+        const id = req.params?.[this.idParam];
+
+        if (id === undefined) {
+            return null;
+        }
+
+        return utils.Validations.parseRequest(
+            Schemas.Base.ParamsIdSchema,
+            {
+                id
+            }
+        ).id;
+    }
+
+
     // get records
     async get(req, res, next) {
 
         try {
 
-            if (req.params.id === undefined) return this.getAllPaginatedRecords(req, res, next);
-            const { id } = parseRequest(Schemas.ParamsIdSchema, req.params);
+            const id = this.getRequestId(req);
 
-            // get single record
-            if (id) {
-
-                const record = await this.model.findOne({
-                    where: {
-                        id,
-                        deleted_at: null
-                    },
-                    include: this.includes,
-                });
-
-                if (!record) {
-
-                    throw new errors.NotFoundException(
-                        `${this.model.name} not found!`
-                    );
-
-                }
-
-                return res.status(
-                    utils.HTTP_STATUS.HTTP_200_OK.status_code
-                ).json(
-                    {
-                        success: true,
-                        message: `${this.model.name} retrieved successfully.`,
-                        data: this.serialize(record),
-                    }
-                );
-
+            // No resource ID → get all records
+            if (id === null) {
+                return this.getAllPaginatedRecords(req, res, next);
             }
 
-            // get all the records
-            return await this.getAllPaginatedRecords(req, res, next);
+            const record = await this.model.findOne({
+                where: {
+                    id,
+                    deleted_at: null
+                },
+                include: this.includes,
+            });
+
+            if (!record) {
+                throw new errors.NotFoundException(
+                    `${this.model.name} not found!`
+                );
+            }
+
+            return res.status(
+                utils.HTTP_STATUS.HTTP_200_OK.status_code
+            ).json({
+                success: true,
+                message: `${this.model.name} retrieved successfully.`,
+                data: this.serialize(record),
+            });
 
         } catch (error) {
             next(error);
@@ -133,12 +142,13 @@ class BaseController {
 
     }
 
+
     async getAllPaginatedRecords(req, res, next, where = {}) {
 
         try {
 
             // validate pagination query parameters
-            const validation = Schemas.PaginationSchema.safeParse(req.query);
+            const validation = Schemas.Pagination.PaginationSchema.safeParse(req.query);
 
             if (!validation.success) {
                 throw new errors.ValidationException(
@@ -244,9 +254,20 @@ class BaseController {
     // get a record to use internally in other functions
     async getRecord(req) {
 
-        const { id } = parseRequest(Schemas.ParamsIdSchema, req.params);
+        const id = this.getRequestId(req);
 
-        const record = await this.model.findByPk(id);
+        if (id === null) {
+            throw new errors.NotFoundException(
+                `${this.model.name} ID not provided!`
+            );
+        }
+
+        const record = await this.model.findOne({
+            where: {
+                id,
+                deleted_at: null
+            }
+        });
 
         if (!record) {
             throw new errors.NotFoundException(
@@ -262,7 +283,7 @@ class BaseController {
 
         try {
 
-            const data = this.createSchema ? parseRequest(this.createSchema, req.body) : { ...req.body };
+            const data = this.createSchema ? utils.Validations.parseRequest(this.createSchema, req.body) : { ...req.body };
 
             if (this.creator) {
                 data.creator_id = req.auth.id;
@@ -296,11 +317,11 @@ class BaseController {
 
             const record = await this.getRecord(req);
 
-            const data = this.updateSchema ? parseRequest(this.updateSchema, req.body) : { ...req.body };
+            const data = this.updateSchema ? utils.Validations.parseRequest(this.updateSchema, req.body) : { ...req.body };
 
-            if (this.creator) {
-                data.creator_id = req.auth.id;
-            }
+            // if (this.creator) {
+            //     data.creator_id = req.auth.id;
+            // }
 
             const updated_record = await record.update(data);
 
