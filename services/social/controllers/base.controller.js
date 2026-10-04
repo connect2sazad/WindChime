@@ -53,7 +53,7 @@ import Schemas from '../schemas/registry.js';
 
 class BaseController {
 
-    constructor(model, { schema = null, createSchema = null, updateSchema = null, creator = false, includes = null, searchFields = [], searchConditions = null, idParam = 'id', } = {}) {
+    constructor(model, { schema = null, createSchema = null, updateSchema = null, creator = false, includes = null, searchFields = [], searchConditions = null, idParam = 'id', parents = [], ownerOnly = false, } = {}) {
         this.model = model;
         this.schema = schema;
         this.createSchema = createSchema;
@@ -63,6 +63,8 @@ class BaseController {
         this.searchFields = searchFields;
         this.searchConditions = searchConditions;
         this.idParam = idParam;
+        this.parents = parents;
+        this.ownerOnly = ownerOnly;
     }
 
     serialize(record, schema = this.schema) {
@@ -85,63 +87,65 @@ class BaseController {
 
     }
 
+    parseId(value) {
+        return utils.Validations.parseRequest(Schemas.Base.ParamsIdSchema, { id: value }).id;
+    }
+
     getRequestId(req) {
-
-        const id = req.params?.[this.idParam];
-
-        if (id === undefined) {
-            return null;
-        }
-
-        return utils.Validations.parseRequest(
-            Schemas.Base.ParamsIdSchema,
-            {
-                id
-            }
-        ).id;
+        const value = req.params?.[this.idParam];
+        return value === undefined ? null : this.parseId(value);
     }
 
+    async getScope(req, transaction) {
+        const scope = {};
+        for (const parent of this.parents) {
+            const id = this.parseId(req.params?.[parent.param]);
+            const where = { id };
+            // Optional relationship constraints for deeper nested parents.
+            for (const [field, param] of Object.entries(parent.scope || {})) {
+                where[field] = this.parseId(req.params?.[param]);
+            }
+            const record = await parent.model.findOne({
+                where, transaction,
+                ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
+            });
+            if (!record) throw new errors.NotFoundException(parent.model.name + ' not found');
+            scope[parent.field] = id;
+        }
+        return scope;
+    }
 
-    // get records
+    assertOwner(req, record) {
+        if (!this.ownerOnly) return;
+        if (!req.auth) throw new errors.UnauthorizedException();
+        if (record.creator_id !== req.auth.id) {
+            throw new errors.ForbiddenException('You can only modify your own records');
+        }
+    }
+
+    async getRecord(req, { transaction, write = true } = {}) {
+        const id = this.getRequestId(req);
+        if (id === null) throw new errors.NotFoundException(this.model.name + ' ID not provided');
+        const scope = await this.getScope(req, transaction);
+        const record = await this.model.findOne({
+            where: { ...scope, id }, include: this.includes, transaction,
+            ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
+        });
+        if (!record) throw new errors.NotFoundException(this.model.name + ' not found');
+        if (write) this.assertOwner(req, record);
+        return record;
+    }
+
     async get(req, res, next) {
-
         try {
-
-            const id = this.getRequestId(req);
-
-            // No resource ID → get all records
-            if (id === null) {
-                return this.getAllPaginatedRecords(req, res, next);
-            }
-
-            const record = await this.model.findOne({
-                where: {
-                    id,
-                    deleted_at: null
-                },
-                include: this.includes,
-            });
-
-            if (!record) {
-                throw new errors.NotFoundException(
-                    `${this.model.name} not found!`
-                );
-            }
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
+            if (this.getRequestId(req) === null) return this.getAllPaginatedRecords(req, res, next);
+            const record = await this.getRecord(req, { write: false });
+            return res.status(200).json({
                 success: true,
-                message: `${this.model.name} retrieved successfully.`,
-                data: this.serialize(record),
+                message: this.model.name + ' retrieved successfully.', data: this.serialize(record)
             });
-
-        } catch (error) {
-            next(error);
-        }
-
+        } catch (error) { return next(error); }
     }
-
 
     async getAllPaginatedRecords(req, res, next, where = {}) {
 
@@ -208,7 +212,8 @@ class BaseController {
                     }
                     : null;
 
-            const finalWhere = searchCondition
+            const scope = await this.getScope(req);
+            const filteredWhere = searchCondition
                 ? {
                     [Op.and]: [
                         where,
@@ -219,7 +224,7 @@ class BaseController {
 
             // retrieve this page & count all matching records
             const { count, rows } = await this.model.findAndCountAll({
-                where: finalWhere,
+                where: { [Op.and]: [scope, filteredWhere] },
                 include: this.includes,
                 distinct: Boolean(this.includes),
                 order: [
@@ -251,119 +256,53 @@ class BaseController {
 
     }
 
-    // get a record to use internally in other functions
-    async getRecord(req) {
-
-        const id = this.getRequestId(req);
-
-        if (id === null) {
-            throw new errors.NotFoundException(
-                `${this.model.name} ID not provided!`
-            );
-        }
-
-        const record = await this.model.findOne({
-            where: {
-                id,
-                deleted_at: null
-            }
-        });
-
-        if (!record) {
-            throw new errors.NotFoundException(
-                `${this.model.name} not found!`
-            );
-        }
-
-        return record;
-    }
-
-    // create a new record
     async create(req, res, next) {
-
         try {
-
-            const data = this.createSchema ? utils.Validations.parseRequest(this.createSchema, req.body) : { ...req.body };
-
-            if (this.creator) {
-                data.creator_id = req.auth.id;
-            }
-
-            const record = await this.model.create(data);
-
-            // add user role details
-            await record.reload({
-                include: this.includes,
+            const input = this.createSchema ? utils.Validations.parseRequest(this.createSchema, req.body) : { ...req.body };
+            const data = await this.model.sequelize.transaction(async transaction => {
+                const scope = await this.getScope(req, transaction);
+                const values = { ...input, ...scope };
+                if (this.creator) {
+                    if (!req.auth) throw new errors.UnauthorizedException();
+                    values.creator_id = req.auth.id;
+                }
+                const record = await this.model.create(values, { transaction });
+                await record.reload({ include: this.includes, transaction });
+                return this.serialize(record);
             });
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_201_CREATED.status_code
-            ).json({
+            return res.status(201).json({
                 success: true,
-                message: `${this.model.name} created successfully.`,
-                data: this.serialize(record),
+                message: this.model.name + ' created successfully.', data
             });
-
-        } catch (error) {
-            next(error);
-        }
-
+        } catch (error) { return next(error); }
     }
 
-    // update a record
     async update(req, res, next) {
-
         try {
-
-            const record = await this.getRecord(req);
-
-            const data = this.updateSchema ? utils.Validations.parseRequest(this.updateSchema, req.body) : { ...req.body };
-
-            // if (this.creator) {
-            //     data.creator_id = req.auth.id;
-            // }
-
-            const updated_record = await record.update(data);
-
-            // add user role details
-            await updated_record.reload({
-                include: this.includes,
+            const input = this.updateSchema ? utils.Validations.parseRequest(this.updateSchema, req.body) : { ...req.body };
+            delete input.creator_id;
+            for (const parent of this.parents) delete input[parent.field];
+            const data = await this.model.sequelize.transaction(async transaction => {
+                const record = await this.getRecord(req, { transaction });
+                await record.update(input, { transaction });
+                await record.reload({ include: this.includes, transaction });
+                return this.serialize(record);
             });
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
+            return res.status(200).json({
                 success: true,
-                message: `${this.model.name} updated successfully.`,
-                data: this.serialize(record),
+                message: this.model.name + ' updated successfully.', data
             });
-
-        } catch (e) {
-            next(e);
-        }
-
+        } catch (error) { return next(error); }
     }
 
-    // delete a record - soft delete
     async delete(req, res, next) {
-
         try {
-
-            const record = await this.getRecord(req);
-
-            await record.destroy();
-
-            res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
-                success: true,
-                message: `${this.model.name} deleted successfully!`,
+            await this.model.sequelize.transaction(async transaction => {
+                const record = await this.getRecord(req, { transaction });
+                await record.destroy({ transaction });
             });
-
-        } catch (e) {
-            next(e);
-        }
-
+            return res.status(200).json({ success: true, message: this.model.name + ' deleted successfully!' });
+        } catch (error) { return next(error); }
     }
 
     // set status to true or false
@@ -387,126 +326,6 @@ class BaseController {
             ).json({
                 success: true,
                 message: 'Status updated successfully.',
-                data: this.serialize(record),
-            });
-
-        } catch (error) {
-
-            next(error);
-
-        }
-    }
-
-    // set remarks
-    async setRemarks(req, res, next) {
-
-        try {
-
-            const {
-                remarks
-            } = req.body
-
-            const record = await this.getRecord(req);
-
-            await record.update({
-                remarks,
-            })
-
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
-                success: true,
-                message: 'Remarks updated successfully.',
-                data: this.serialize(record),
-            });
-
-        } catch (error) {
-
-            next(error);
-
-        }
-    }
-
-    // set tags
-    async setTags(req, res, next) {
-
-        try {
-
-            const {
-                tags
-            } = req.body
-
-            const record = await this.getRecord(req);
-
-            await record.update({
-                tags,
-            })
-
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
-                success: true,
-                message: 'Tags updated successfully.',
-                data: this.serialize(record),
-            });
-
-        } catch (error) {
-
-            next(error);
-
-        }
-    }
-
-    // remove remarks
-    async removeRemarks(req, res, next) {
-
-        try {
-
-            const {
-                remarks
-            } = req.body
-
-            const record = await this.getRecord(req);
-
-            await record.update({
-                remarks: null,
-            })
-
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
-                success: true,
-                message: 'Remarks updated successfully.',
-                data: this.serialize(record),
-            });
-
-        } catch (error) {
-
-            next(error);
-
-        }
-    }
-
-    // remove tags
-    async removeTags(req, res, next) {
-
-        try {
-
-            const record = await this.getRecord(req);
-
-            await record.update({
-                tags: null,
-            })
-
-
-            return res.status(
-                utils.HTTP_STATUS.HTTP_200_OK.status_code
-            ).json({
-                success: true,
-                message: 'Tags updated successfully.',
                 data: this.serialize(record),
             });
 

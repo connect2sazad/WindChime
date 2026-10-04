@@ -8,7 +8,7 @@ export const CommentSchema = z.object({
     status: z.boolean(),
     created_at: z.date(),
     updated_at: z.date(),
-    deleted_at: z.date().nullable(),
+    deleted_at: z.date().nullable().default(null),
 });
 
 export const CommentCreateSchema = z.object({

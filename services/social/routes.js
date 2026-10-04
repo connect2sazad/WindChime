@@ -59,7 +59,7 @@ router.use(routes.health);
 router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
     res.set('Cache-Control', 'no-store');
     return res.status(200).json(
-        utils.helpers.structurize_response(true, 'Social authentication successful', req.user)
+        utils.helpers.structurize_response(true, 'Social authentication successful', req.auth)
     );
 });
 
