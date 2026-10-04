@@ -96,6 +96,10 @@ class BaseController {
         return value === undefined ? null : this.parseId(value);
     }
 
+    isAuthorized(req) {
+        if(!req.auth) throw new errors.UnauthorizedException();
+    }
+
     async getScope(req, transaction) {
         const scope = {};
         for (const parent of this.parents) {
@@ -113,6 +117,14 @@ class BaseController {
             scope[parent.field] = id;
         }
         return scope;
+    }
+
+    async prepareCreate(req, values, transaction) {
+        return values;
+    }
+
+    async getListScope(req) {
+        return this.getScope(req);
     }
 
     assertOwner(req, record) {
@@ -212,7 +224,7 @@ class BaseController {
                     }
                     : null;
 
-            const scope = await this.getScope(req);
+            const scope = await this.getListScope(req);
             const filteredWhere = searchCondition
                 ? {
                     [Op.and]: [
@@ -266,7 +278,8 @@ class BaseController {
                     if (!req.auth) throw new errors.UnauthorizedException();
                     values.creator_id = req.auth.id;
                 }
-                const record = await this.model.create(values, { transaction });
+                const prepared = await this.prepareCreate(req, values, transaction);
+                const record = await this.model.create(prepared, { transaction });
                 await record.reload({ include: this.includes, transaction });
                 return this.serialize(record);
             });

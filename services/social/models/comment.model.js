@@ -16,6 +16,12 @@ const Comment = sequelize.define('Comment',
             allowNull: false,
         },
 
+        parent_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
+        },
+
         content: {
             type: DataTypes.STRING(2000),
             allowNull: false,

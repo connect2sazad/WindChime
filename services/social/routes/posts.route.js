@@ -6,6 +6,7 @@ const router = express.Router();
 
 const POSTS = '/posts';
 export const POSTS_ID = POSTS + '/:post_id';
+export const POSTS_ID_REACTION = POSTS_ID + '/reactions';
 
 // create a new post
 router.post(POSTS, Middlewares.identityAuth, (req, res, next) => {
@@ -31,5 +32,21 @@ router.patch(POSTS_ID, Middlewares.identityAuth, (req, res, next) => {
 router.delete(POSTS_ID, Middlewares.identityAuth, (req, res, next) => {
     return Controllers.post_controller.delete(req, res, next);
 });
+
+// get all post reactions
+router.get(POSTS_ID_REACTION, Middlewares.identityAuth, 
+    (req, res, next) => Controllers.post_reaction_controller.get(req, res, next)
+);
+
+// add post reaction
+router.put(POSTS_ID_REACTION, Middlewares.identityAuth,
+    (req, res, next) => Controllers.post_reaction_controller.set(req, res, next)
+);
+
+// remove post reaction
+router.delete(POSTS_ID_REACTION, Middlewares.identityAuth,
+    (req, res, next) => Controllers.post_reaction_controller.remove(req, res, next)
+);
+
 
 export default router;

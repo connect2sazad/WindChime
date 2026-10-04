@@ -39,6 +39,7 @@ import * as Base from "./base.schema.js";
 import * as Pagination from "./pagination.schema.js";
 import * as Post from "./post.schema.js";
 import * as Comment from "./comment.schema.js";
+import * as ReactionSchemas from "./reactions.schema.js";
 
 
 // export all the schemas
@@ -47,5 +48,6 @@ const Schemas = {
     Pagination,
     Post,
     Comment,
+    ReactionSchemas
 };
 export default Schemas;

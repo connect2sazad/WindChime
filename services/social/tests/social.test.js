@@ -65,7 +65,7 @@ test('pagination passes limit and offset',async()=>{
 function transaction(){const tx={LOCK:{UPDATE:'UPDATE'}};mock.method(sequelize,'transaction',async callback=>callback(tx));return tx;}
 test('comment validates parent and assigns path and authenticated IDs',async()=>{
     identity(2);const tx=transaction();mock.method(Models.Post,'findOne',async options=>{assert.equal(options.where.id,3);assert.equal(options.transaction,tx);assert.equal(options.lock,'UPDATE');return record();});
-    mock.method(Models.Comment,'create',async(data,options)=>{assert.deepEqual(data,{post_id:3,creator_id:2,content:'Comment'});assert.equal(options.transaction,tx);return record(data);});
+    mock.method(Models.Comment,'create',async(data,options)=>{assert.deepEqual(data,{post_id:3,creator_id:2,content:'Comment',parent_id:null});assert.equal(options.transaction,tx);return record(data);});
     const r=await request('/posts/3/comments','POST',{content:'Comment'});assert.equal(r.status,201);assert.equal(r.body.data.post_id,3);
 });
 test('missing or soft-deleted parent is 404 without insert',async()=>{
@@ -82,7 +82,7 @@ test('comment listing always scopes to URL post even with filters',async()=>{
     identity();mock.method(Models.Post,'findOne',async()=>record());
     mock.method(Models.Comment,'findAndCountAll',async options=>{
         const scopes=options.where[Object.getOwnPropertySymbols(options.where)[0]];
-        assert.deepEqual(scopes[0],{post_id:3});return {count:1,rows:[record({post_id:3})]};
+        assert.deepEqual(scopes[0],{post_id:3,parent_id:null});return {count:1,rows:[record({post_id:3})]};
     });
     const r=await request('/posts/3/comments?search=Hello&status=true');assert.equal(r.status,200);assert.equal(r.body.data[0].post_id,3);
 });
@@ -123,4 +123,68 @@ test('multiple parent mappings validate relationships',async()=>{
     const c=new Base(Models.Comment,{parents:[{param:'group_id',field:'group_id',model:parent},{param:'post_id',field:'post_id',model:parent,scope:{group_id:'group_id'}}]});
     assert.deepEqual(await c.getScope({params:{group_id:'2',post_id:'3'}}),{group_id:2,post_id:3});
     assert.deepEqual(seen,[{id:2},{id:3,group_id:2}]);
+});
+
+
+test('reply creation validates and locks same-post top-level parent',async()=>{
+    identity(2);mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async options=>{
+        assert.deepEqual(options.where,{id:6,post_id:3});assert.equal(options.lock,'UPDATE');assert.ok(options.transaction);
+        return record({id:6,post_id:3,parent_id:null});
+    });
+    mock.method(Models.Comment,'create',async data=>{assert.deepEqual(data,{content:'Reply',parent_id:6,post_id:3,creator_id:2});return record(data);});
+    assert.equal((await request('/posts/3/comments','POST',{content:'Reply',parent_id:6})).status,201);
+});
+test('missing, wrong-post, deleted or nested parent cannot create reply',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async options=>{assert.deepEqual(options.where,{id:6,post_id:3});return null;});
+    mock.method(Models.Comment,'create',()=>assert.fail('invalid reply inserted'));
+    assert.equal((await request('/posts/3/comments','POST',{content:'Reply',parent_id:6})).status,404);
+});
+test('reply query scopes pagination to the requested parent',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());mock.method(Models.Comment,'findOne',async()=>record({id:6,post_id:3,parent_id:null}));
+    mock.method(Models.Comment,'findAndCountAll',async options=>{
+        const [scope]=options.where[Object.getOwnPropertySymbols(options.where)[0]];
+        assert.deepEqual(scope,{post_id:3,parent_id:6});assert.equal(options.limit,1);assert.equal(options.offset,1);
+        return {count:2,rows:[record({post_id:3,parent_id:6})]};
+    });
+    const r=await request('/posts/3/comments?parent_id=6&page=2&limit=1');assert.equal(r.status,200);assert.equal(r.body.data[0].parent_id,6);
+});
+test('malformed reply filters return 422',async()=>{
+    identity();for(const q of ['parent_id=','parent_id=null','parent_id=-1','parent_id=1.5','parent_id=abc','parent_id=6&parent_id=7'])assert.equal((await request('/posts/3/comments?'+q)).status,422);
+});
+test('missing reply-list parent returns 404',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());mock.method(Models.Comment,'findOne',async()=>null);
+    assert.equal((await request('/posts/3/comments?parent_id=6')).status,404);
+});
+test('parent cannot be reassigned by PATCH',async()=>{
+    identity();assert.equal((await request('/posts/3/comments/7','PATCH',{content:'Moved',parent_id:8})).status,422);
+});
+test('reply single view hides reply after parent deletion',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async options=>options.where.id===7?record({id:7,post_id:3,parent_id:6}):null);
+    assert.equal((await request('/posts/3/comments/7')).status,404);
+});
+
+test('real model accepts a top-level comment with null parent',async()=>{
+    await Models.Comment.build({post_id:3,creator_id:1,parent_id:null,content:'Top-level'}).validate();
+});
+
+test('reply to a reply returns 422 without inserting', async () => {
+    identity();
+    mock.method(Models.Post, 'findOne', async () => record());
+    mock.method(Models.Comment, 'findOne', async () =>
+        record({ id: 6, post_id: 3, parent_id: 2 })
+    );
+    mock.method(Models.Comment, 'create', () =>
+        assert.fail('A nested reply must not be inserted')
+    );
+
+    const result = await request('/posts/3/comments', 'POST', {
+        content: 'Nested reply',
+        parent_id: 6,
+    });
+
+    assert.equal(result.status, 422);
+    assert.match(result.body.message, /Replies to replies are not supported/);
 });

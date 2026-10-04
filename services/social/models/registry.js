@@ -35,12 +35,16 @@
  */
 
 import './associations.js';
-import Comment from './comment.model.js';
 import Post from './post.model.js';
+import PostReaction from './post-reaction.model.js';
+import Comment from './comment.model.js';
+import CommentReaction from './comment-reaction.model.js';
 
 const Models = {
     Post,
-    Comment
+    Comment,
+    PostReaction,
+    CommentReaction,
 };
 
 export default Models;
