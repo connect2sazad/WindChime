@@ -39,12 +39,16 @@ import Post from './post.model.js';
 import PostReaction from './post-reaction.model.js';
 import Comment from './comment.model.js';
 import CommentReaction from './comment-reaction.model.js';
+import Friendship from './friendship.model.js';
+import Follow from './follow.model.js';
 
 const Models = {
     Post,
     Comment,
     PostReaction,
     CommentReaction,
+    Friendship,
+    Follow,
 };
 
 export default Models;

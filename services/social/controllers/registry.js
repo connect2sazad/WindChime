@@ -36,6 +36,7 @@
 import BaseController from './base.controller.js';
 import CommentReactionController from './comment-reaction.controller.js';
 import CommentController from './comment.controller.js';
+import FriendshipController from './friendship.controller.js';
 import PostReactionController from './post-reaction.controller.js';
 import PostController from './post.controller.js';
 
@@ -43,6 +44,7 @@ const post_controller = new PostController();
 const comment_controller = new CommentController();
 const post_reaction_controller = new PostReactionController();
 const comment_reaction_controller = new CommentReactionController();
+const friendship_controller = new FriendshipController();
 
 const Controllers = {
     BaseController,
@@ -50,6 +52,7 @@ const Controllers = {
     comment_controller,
     post_reaction_controller,
     comment_reaction_controller,
+    friendship_controller,
 };
 
 export default Controllers;

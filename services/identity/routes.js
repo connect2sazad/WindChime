@@ -53,11 +53,10 @@ router.get('/', (req, res) => {
     });
 });
 
-router.use(routes.health);
-
-// other api
-router.use(config.API_PREFIX, routes.auth);
-router.use(config.API_PREFIX, routes.users);
+// get all routes from registry
+Object.values(routes).forEach((route) => {
+    router.use(config.API_PREFIX, route);
+});
 
 
 export default router;

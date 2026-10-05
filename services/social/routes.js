@@ -54,8 +54,6 @@ router.get('/', (req, res) => {
     });
 });
 
-router.use(routes.health);
-
 router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
     res.set('Cache-Control', 'no-store');
     return res.status(200).json(
@@ -63,8 +61,10 @@ router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
     );
 });
 
-router.use(config.API_PREFIX, routes.posts);
-router.use(config.API_PREFIX, routes.comments);
+// get all routes from registry
+Object.values(routes).forEach((route) => {
+    router.use(config.API_PREFIX, route);
+});
 
 
 export default router;

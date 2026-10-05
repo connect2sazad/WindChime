@@ -40,7 +40,7 @@ import * as Pagination from "./pagination.schema.js";
 import * as Post from "./post.schema.js";
 import * as Comment from "./comment.schema.js";
 import * as ReactionSchemas from "./reactions.schema.js";
-
+import * as Friendship from './friendships.schema.js';
 
 // export all the schemas
 const Schemas = {
@@ -48,6 +48,7 @@ const Schemas = {
     Pagination,
     Post,
     Comment,
-    ReactionSchemas
+    ReactionSchemas,
+    Friendship,
 };
 export default Schemas;
