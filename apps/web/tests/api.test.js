@@ -5,8 +5,11 @@ import { getComments } from '../src/api/comments.js';
 import { updatePost,deletePost } from '../src/api/posts.js';
 import { getPosts } from '../src/api/posts.js';
 import { getProfileByUsername } from '../src/api/users.js';
-import { sendMessage,getMessages,startConversation } from '../src/api/messages.js';
+import { sendMessage,getMessages,startConversation,getConversations } from '../src/api/messages.js';
 afterEach(()=>mock.restoreAll());
+test('DM media uses FormData without overriding its boundary',async()=>{mock.method(globalThis,'fetch',async(url,options)=>{assert.ok(options.body instanceof FormData);assert.equal(options.headers['Content-Type'],undefined);assert.equal(options.body.get('client_message_id'),'nonce');return new Response(JSON.stringify({success:true,data:{id:9}}));});assert.equal((await sendMessage('test',2,'','nonce',{files:[new Blob(['test'],{type:'image/png'})]})).id,9);});
+test('DM post sharing sends the original post ID',async()=>{mock.method(globalThis,'fetch',async(url,options)=>{assert.deepEqual(JSON.parse(options.body),{content:'',client_message_id:'nonce',shared_post_id:3});return new Response(JSON.stringify({success:true,data:{id:9}}));});await sendMessage('test',2,'','nonce',{postId:3});});
+test('conversation search is encoded and sent to the backend',async()=>{mock.method(globalThis,'fetch',async url=>{assert.ok(String(url).endsWith('/conversations?page=1&search=Sazad%20Ahemad'));return new Response(JSON.stringify({success:true,data:[]}));});await getConversations('test',1,undefined,'Sazad Ahemad');});
 test('DM sends authenticated text and preserves the retry UUID',async()=>{
  const id=crypto.randomUUID();mock.method(globalThis,'fetch',async(url,options)=>{assert.ok(String(url).endsWith('/conversations/4/messages'));assert.equal(options.headers.Authorization,'Bearer test');assert.deepEqual(JSON.parse(options.body),{content:'Hello',client_message_id:id});return new Response(JSON.stringify({success:true,data:{id:8,content:'Hello'}}));});assert.equal((await sendMessage('test',4,'Hello',id)).id,8);
 });

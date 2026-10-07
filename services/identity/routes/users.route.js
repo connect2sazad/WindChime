@@ -44,6 +44,7 @@ import Middlewares from "../middlewares/registry.js";
 import Controllers from "../controllers/registry.js";
 
 const router = express.Router();
+router.post('/profiles/lookup',Middlewares.JWTTokenization.authenticate,(req,res,next)=>Profile.lookup(req,res,next));
 router.put('/users/me/picture', Middlewares.JWTTokenization.authenticate, uploadAvatar, (req, res, next) => Avatar.set(req, res, next));
 router.delete('/users/me/picture', Middlewares.JWTTokenization.authenticate, (req, res, next) => Avatar.remove(req, res, next));
 router.get('/users/:id/picture', Middlewares.JWTTokenization.authenticate, (req, res, next) => Avatar.get(req, res, next));

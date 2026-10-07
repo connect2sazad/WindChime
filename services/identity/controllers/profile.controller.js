@@ -3,11 +3,18 @@ import Models from '../models/registry.js';
 import Schemas from '../schemas/registry.js';
 import { ProfileEditSchema } from '../schemas/identity.schema.js';
 import { UsernameSchema } from '../schemas/identity.schema.js';
+import { z } from '../docs/openapi.js';
 import { parseRequest } from '../utils/validation.js';
 import errors from '../errors/registry.js';
 import utils from '../utils/registry.js';
 function serialize(user, own = false) { return { id: user.id, name: user.name, username: user.username, bio: user.bio || '', avatar_version: user.avatar_filename || null, created_at: user.created_at, ...(own ? { email: user.email, email_verified: Boolean(user.email_verified_at) } : {}) }; }
 class ProfileController {
+    async lookup(req,res,next){try{
+        const {ids,search}=parseRequest(z.object({ids:z.array(z.number().int().positive()).max(100),search:z.string().trim().max(100).default('')}).strict(),req.body);
+        const users=await Models.User.findAll({where:{id:{[Op.in]:ids},status:true},attributes:['id','name','username']});
+        const query=search.toLowerCase();const data=users.map(user=>({id:user.id,name:user.name,username:user.username})).filter(user=>!query||user.name.toLowerCase().includes(query)||user.username.toLowerCase().includes(query));
+        return res.json({success:true,data});
+    }catch(error){next(error);}}
     async get(req, res, next) {
         try {
             if (!req.auth) throw new errors.UnauthorizedException();

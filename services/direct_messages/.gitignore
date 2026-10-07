@@ -3,3 +3,5 @@ node_modules
 .npm-cache
 .backups/
 .npm-cache/
+
+uploads/

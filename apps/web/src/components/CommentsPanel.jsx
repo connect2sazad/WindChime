@@ -51,7 +51,7 @@ export default function CommentsPanel({ post, token, currentUser, onClose, onCou
                     setComments(list.data);
                     setHasMore(list.pagination.has_next_page);
                     setSummary(counts);
-                    onCountChange(counts.total);
+                    onCountChange?.(counts.total);
                 }
             } catch (e) { if (!controller.signal.aborted) setError(e.message); }
             finally { if (!controller.signal.aborted) setLoading(false); }
