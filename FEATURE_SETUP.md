@@ -34,7 +34,9 @@ Social endpoints: `GET /api/v1/connections?view=incoming|sent|friends|following|
 
 ## Profiles and creation
 
-`/profiles/:user_id` shows a member's profile with paginated All posts, Text, Photos, Videos, Reels, Reshares, Friends, Followers and Following tabs. Reshares retain the original post author; hidden and deleted originals are excluded. Pending requests remain private.
+Browser profiles use `/profiles/:username`, for example `/profiles/connect2sazad`. Identity resolves the username to the numeric ID; Social endpoints keep their numeric IDs. Profile links across the app use usernames and changing your username redirects to the new URL. Missing profiles offer retry and people search; Share profile uses the browser share sheet or copies the profile link.
+
+Profiles have grouped Posts, Reels, Reshares and Connections sections with paginated filters. Reshares retain the original author; hidden and deleted originals are excluded. Pending requests remain private. The feed now offers Load more moments with retry and duplicate suppression.
 
 Your own profile allows editing name, username and bio, and uploading, replacing or removing a picture. Pictures accept JPG/PNG/WebP up to 5 MB, are decoded and resized to 512x512 WebP, and are stored privately under Identity's ignored `uploads/avatars/` folder. The avatar migration has been applied locally after a private users backup. Preserve this folder on deployment. Other users cannot edit your profile or see your email. Email changes are not included.
 

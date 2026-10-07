@@ -1,4 +1,5 @@
 import { apiRequest, IDENTITY_API } from './request.js';
+
 export async function getDisplayUser(token, id, signal) {
     try {
         const result = await apiRequest(IDENTITY_API, `/users/${id}/profile`, { token, signal });
@@ -11,8 +12,18 @@ export async function getDisplayUser(token, id, signal) {
     }
 }
 
-export async function getProfile(token,id,signal){const result=await apiRequest(IDENTITY_API,`/users/${id}/profile`,{token,signal});return result.data;}
-export async function updateProfile(token,input){const result=await apiRequest(IDENTITY_API,'/users/me/profile',{token,method:'PATCH',body:input});return result.data;}
-export async function uploadProfilePicture(token,file){const body=new FormData();body.append('picture',file);return (await apiRequest(IDENTITY_API,'/users/me/picture',{token,method:'PUT',body,timeoutMs:30000})).data;}
-export async function removeProfilePicture(token){return (await apiRequest(IDENTITY_API,'/users/me/picture',{token,method:'DELETE'})).data;}
-export async function getProfilePicture(token,id,signal){return apiRequest(IDENTITY_API,`/users/${id}/picture`,{token,signal,responseType:'blob'});}
+export async function getProfile(token, id, signal) { const result = await apiRequest(IDENTITY_API, `/users/${id}/profile`, { token, signal }); return result.data; }
+export async function updateProfile(token, input) { const result = await apiRequest(IDENTITY_API, '/users/me/profile', { token, method: 'PATCH', body: input }); return result.data; }
+export async function uploadProfilePicture(token, file) { const body = new FormData(); body.append('picture', file); return (await apiRequest(IDENTITY_API, '/users/me/picture', { token, method: 'PUT', body, timeoutMs: 30000 })).data; }
+export async function removeProfilePicture(token) { return (await apiRequest(IDENTITY_API, '/users/me/picture', { token, method: 'DELETE' })).data; }
+export async function getProfilePicture(token, id, signal) { return apiRequest(IDENTITY_API, `/users/${id}/picture`, { token, signal, responseType: 'blob' }); }
+
+export async function getProfileByUsername(token, username, signal) {
+    const result = await apiRequest(
+        IDENTITY_API,
+        `/profiles/${encodeURIComponent(username)}`,
+        { token, signal }
+    );
+
+    return result.data;
+}

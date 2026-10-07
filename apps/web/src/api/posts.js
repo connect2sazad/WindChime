@@ -1,6 +1,8 @@
 import { apiRequest, SOCIAL_API } from './request.js';
-export async function getPosts(token, signal) {
-    const body = await apiRequest(SOCIAL_API, '/posts?page=1&limit=10&status=true', { token, signal });
+export async function updatePost(token,id,content){const result=await apiRequest(SOCIAL_API,`/posts/${id}`,{token,method:'PATCH',body:{content}});if(result.data?.id!==id)throw new Error('Could not confirm the updated post. Refresh before retrying.');return result.data;}
+export async function deletePost(token,id){await apiRequest(SOCIAL_API,`/posts/${id}`,{token,method:'DELETE'});}
+export async function getPosts(token, signal, page=1) {
+    const body = await apiRequest(SOCIAL_API, `/posts?page=${page}&limit=10&status=true`, { token, signal });
     if (!Array.isArray(body.data)) throw new Error('Unexpected posts response');
     return body;
 }

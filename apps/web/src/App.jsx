@@ -143,7 +143,7 @@ function App() {
       <Route path="/" element={<Home session={session} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError} />} />
       <Route path="/connections" element={<Connections session={session} />} />
       <Route path="/create" element={<CreatePost session={session} />} />
-      <Route path="/profiles/:user_id" element={<Profile key={pathname} session={session} onUpdated={data=>setSession(previous=>previous?{...previous,user:{...previous.user,...data}}:previous)} />} />
+      <Route path="/profiles/:username" element={<Profile key={pathname} session={session} onUpdated={data=>setSession(previous=>previous?{...previous,user:{...previous.user,...data}}:previous)} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes></>;
   }

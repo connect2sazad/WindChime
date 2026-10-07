@@ -2,7 +2,22 @@ import { test, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { apiRequest, SOCIAL_API } from '../src/api/request.js';
 import { getComments } from '../src/api/comments.js';
+import { updatePost,deletePost } from '../src/api/posts.js';
+import { getPosts } from '../src/api/posts.js';
+import { getProfileByUsername } from '../src/api/users.js';
 afterEach(()=>mock.restoreAll());
+test('username profile lookup uses the username endpoint',async()=>{
+ mock.method(globalThis,'fetch',async url=>{assert.ok(String(url).endsWith('/profiles/connect2sazad'));return new Response(JSON.stringify({success:true,data:{id:2,username:'connect2sazad'}}));});assert.equal((await getProfileByUsername('test','connect2sazad')).id,2);
+});
+test('feed pagination requests the selected page',async()=>{
+ mock.method(globalThis,'fetch',async url=>{assert.equal(url,SOCIAL_API+'/posts?page=2&limit=10&status=true');return new Response(JSON.stringify({success:true,data:[],pagination:{page:2}}));});assert.equal((await getPosts('test',undefined,2)).pagination.page,2);
+});
+test('editing sends caption only and requires matching returned post',async()=>{
+ mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(url,SOCIAL_API+'/posts/3');assert.equal(options.method,'PATCH');assert.deepEqual(JSON.parse(options.body),{content:'Updated'});return new Response(JSON.stringify({success:true,data:{id:3,content:'Updated'}}));});assert.equal((await updatePost('test',3,'Updated')).content,'Updated');
+});
+test('delete uses protected post endpoint and propagates ownership rejection',async()=>{
+ mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(url,SOCIAL_API+'/posts/3');assert.equal(options.method,'DELETE');assert.equal(options.headers.Authorization,'Bearer test');assert.equal(options.body,undefined);return new Response(JSON.stringify({success:false,message:'Forbidden'}),{status:403});});await assert.rejects(()=>deletePost('test',3),error=>error.status===403);
+});
 test('request preserves caller cancellation and JSON payload',async()=>{
  const controller=new AbortController();
  mock.method(globalThis,'fetch',async(url,options)=>{

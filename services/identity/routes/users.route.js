@@ -1,5 +1,5 @@
 import Profile from '../controllers/profile.controller.js';
-import Avatar,{uploadAvatar} from '../controllers/avatar.controller.js';
+import Avatar, { uploadAvatar } from '../controllers/avatar.controller.js';
 import Registration from '../controllers/registration.controller.js';
 /**
  * =============================================================================
@@ -44,16 +44,22 @@ import Middlewares from "../middlewares/registry.js";
 import Controllers from "../controllers/registry.js";
 
 const router = express.Router();
-router.put('/users/me/picture',Middlewares.JWTTokenization.authenticate,uploadAvatar,(req,res,next)=>Avatar.set(req,res,next));
-router.delete('/users/me/picture',Middlewares.JWTTokenization.authenticate,(req,res,next)=>Avatar.remove(req,res,next));
-router.get('/users/:id/picture',Middlewares.JWTTokenization.authenticate,(req,res,next)=>Avatar.get(req,res,next));
-router.get('/users/:id/profile',Middlewares.JWTTokenization.authenticate,(req,res,next)=>Profile.get(req,res,next));
-router.patch('/users/me/profile',Middlewares.JWTTokenization.authenticate,(req,res,next)=>Profile.update(req,res,next));
-router.post('/users/me/availability',Middlewares.JWTTokenization.authenticate,(req,res,next)=>Registration.availability(req,res,next));
+router.put('/users/me/picture', Middlewares.JWTTokenization.authenticate, uploadAvatar, (req, res, next) => Avatar.set(req, res, next));
+router.delete('/users/me/picture', Middlewares.JWTTokenization.authenticate, (req, res, next) => Avatar.remove(req, res, next));
+router.get('/users/:id/picture', Middlewares.JWTTokenization.authenticate, (req, res, next) => Avatar.get(req, res, next));
+router.get('/users/:id/profile', Middlewares.JWTTokenization.authenticate, (req, res, next) => Profile.get(req, res, next));
+router.patch('/users/me/profile', Middlewares.JWTTokenization.authenticate, (req, res, next) => Profile.update(req, res, next));
+router.post('/users/me/availability', Middlewares.JWTTokenization.authenticate, (req, res, next) => Registration.availability(req, res, next));
 
 const USERS = "/users";
 const USERS_ID = USERS + "/:id";
 // const USERS_ID_REMOVE = USERS_ID + "/remove";
+
+router.get(
+    '/profiles/:username',
+    Middlewares.JWTTokenization.authenticate,
+    (req, res, next) => Profile.getByUsername(req, res, next)
+);
 
 router.get(
     USERS,

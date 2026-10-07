@@ -1,3 +1,4 @@
+import ProfileLink from './ProfileLink.jsx';
 import { Avatar } from './FeedVisuals.jsx';
 import CommentReactionControl from './CommentReactionControl.jsx';
 import ReactionsDialog from './ReactionsDialog.jsx';
@@ -6,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import RelativeTime from './RelativeTime.jsx';
 import { getComments } from '../api/comments.js';
 import { getDisplayUser } from '../api/users.js';
-import { Link } from 'react-router-dom';
 
 function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, token }) {
     const [reactorsOpen, setReactorsOpen] = useState(false);
@@ -18,7 +18,7 @@ function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, toke
         <div className="wc-ig-row">
             <Avatar name={name} id={record.creator_id} token={token} small/>
             <div className="wc-ig-body">
-                <p><Link className="wc-comment-author" to={`/profiles/${record.creator_id}`}><strong>{name}</strong>{person?.username&&<small>@{person.username}</small>}</Link> <span>{record.content}</span></p>
+                <p><ProfileLink className="wc-comment-author" username={person?.username}><strong>{name}</strong>{person?.username&&<small>@{person.username}</small>}</ProfileLink> <span>{record.content}</span></p>
                 <div className="wc-ig-meta">
                     <RelativeTime value={record.created_at} />
                     <button type="button" disabled={busy} onClick={()=>onReply({...record,name})}>Reply</button>

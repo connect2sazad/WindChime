@@ -1,6 +1,8 @@
+import ProfileLink from '../components/ProfileLink.jsx';
+import PostOptions from '../components/PostOptions.jsx';
 import { Icon, Avatar } from '../components/FeedVisuals.jsx';
 import FriendRequestsPreview from '../components/FriendRequestsPreview.jsx';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import PostMediaView from '../components/PostMediaView.jsx';
 import ReactionIcon from '../components/ReactionIcon.jsx';
 import { REACTIONS } from '../utils/reactionTypes.js';
@@ -25,7 +27,7 @@ import './Home.css';
 
 
 
-export function PostCard({ post, currentUser, token }) {
+export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
     const [reaction, setMyReaction] = useState(null);
     const [reactionLoading, setReactionLoading] = useState(true);
     const [reactionBusy, setReactionBusy] = useState(false);
@@ -285,10 +287,10 @@ export function PostCard({ post, currentUser, token }) {
             <header className="wc-post-header">
                 <Avatar name={post.name} tone={post.tone} id={post.creator_id} token={token} />
                 <div>
-                    <Link className="wc-author-link" to={`/profiles/${post.creator_id}`}><strong>{post.name}</strong></Link>
+                    <ProfileLink className="wc-author-link" username={post.username}><strong>{post.name}</strong></ProfileLink>
                     <p>{post.username?`@${post.username}`:'Account unavailable'} <span>· <RelativeTime value={post.created_at} /></span></p>
                 </div>
-                <span className="wc-post-flower" aria-hidden="true">✳</span>
+                <PostOptions post={post} currentUser={currentUser} token={token} onSaved={onUpdated} onDeleted={onDeleted}/>
             </header>
 
             <div className="wc-post-content">
@@ -417,6 +419,8 @@ export default function Home({
     const [posts, setPosts] = useState([]);
     const [feedLoading, setFeedLoading] = useState(true);
     const [feedError, setFeedError] = useState('');
+    const [postNotice,setPostNotice]=useState('');
+    const [feedPage,setFeedPage]=useState(1); const [feedPagination,setFeedPagination]=useState(null); const [feedRevision,setFeedRevision]=useState(0); const morePending=useRef(false);
     const route = useNavigate();
     const user = session.user;
 
@@ -428,7 +432,7 @@ export default function Home({
             setFeedError('');
 
             try {
-                const result = await getPosts(session.token, controller.signal);
+                const result = await getPosts(session.token, controller.signal, feedPage);
 
                 const authors = new Map(await Promise.all([...new Set(result.data.map(post=>post.creator_id))].map(async id=>[id,id===user.id?{id:user.id,name:user.name,username:user.username}:await getDisplayUser(session.token,id,controller.signal)])));
                 const items = result.data.map(post => {
@@ -444,7 +448,7 @@ export default function Home({
                     };
                 });
 
-                if (!controller.signal.aborted) setPosts(items);
+                if (!controller.signal.aborted) {setPosts(previous=>feedPage===1?items:[...previous,...items.filter(item=>!previous.some(existing=>existing.id===item.id))]);setFeedPagination(result.pagination);}
             } catch (error) {
                 if (!controller.signal.aborted) {
                     setFeedError(
@@ -454,13 +458,13 @@ export default function Home({
                     );
                 }
             } finally {
-                if (!controller.signal.aborted) setFeedLoading(false);
+                if (!controller.signal.aborted){setFeedLoading(false);morePending.current=false;}
             }
         }
 
         load();
         return () => controller.abort();
-    }, [session.token, user.id, user.name, user.username]);
+    }, [session.token, user.id, user.name, user.username, feedPage, feedRevision]);
 
     function navigate() { route('/connections'); }
 
@@ -482,23 +486,24 @@ export default function Home({
                     <p className="wc-notice" role="alert">{logoutError}</p>
                 )}
 
+                {postNotice&&<p className="wc-notice" role="status">{postNotice}</p>}
                 <div className="wc-feed-heading">
                     <h2>Latest conversations</h2><span>Latest moments</span>
                 </div>
 
                 {posts.map(post => (
-                    <PostCard key={post.id} post={post} currentUser={user} token={session.token} />
+                    <PostCard key={post.id} post={post} currentUser={user} token={session.token} onUpdated={data=>{setPosts(previous=>previous.map(item=>item.id===data.id?{...item,...data}:item));setPostNotice('Post updated.');}} onDeleted={id=>{setPosts(previous=>previous.filter(item=>item.id!==id));setPostNotice('Post deleted.');}}/>
                 ))}
 
                 {feedLoading && <p className="wc-notice" role="status">Loading conversations…</p>}
 
-                {feedError && <p className="wc-notice" role="alert">{feedError}</p>}
+                {feedError && <div className="wc-notice" role="alert"><p>{feedError}</p><button className="wc-feed-more" onClick={()=>setFeedRevision(value=>value+1)}>Try again</button></div>}
 
                 {!feedLoading && !feedError && posts.length === 0 && (
                     <p className="wc-notice">No posts yet. A small hello is a good start.</p>
                 )}
                 {!feedLoading && !feedError && posts.length > 0 && (
-                    <p className="wc-feed-end">Recent moments from WindChime ✳</p>
+                    <p className="wc-feed-end">{feedPagination?.has_next_page?<button className="wc-feed-more" disabled={feedLoading} onClick={()=>{if(morePending.current)return;morePending.current=true;setFeedPage(value=>value+1);}}>Load more moments ↓</button>:'You’re all caught up ✳'}</p>
                 )}
             </main>
 
