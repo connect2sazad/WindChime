@@ -1,0 +1,7 @@
+import { registry,z } from './openapi.js';
+import config from '../config/config.js';
+import { Start,Send,Read,Cursor,Inbox,Id } from '../schemas/messaging.schema.js';
+const json=schema=>({required:true,content:{'application/json':{schema}}});
+for(const [method,path,schema,query,description] of [['post','/conversations',Start,null,'Open a conversation with an accepted friend'],['get','/conversations',null,Inbox,'List your eligible conversations and unread counts'],['get','/conversations/{conversation_id}/messages',null,Cursor,'Read messages using before or after cursors'],['post','/conversations/{conversation_id}/messages',Send,null,'Send text with a client UUID for safe retries'],['patch','/conversations/{conversation_id}/read',Read,null,'Advance your read receipt']]){
+ registry.registerPath({method,path:config.API_PREFIX+path,tags:['Direct messages'],summary:description,security:[{bearerAuth:[]}],request:{...(schema?{body:json(schema)}:{}),...(query?{query}:{}),...(path.includes('{conversation_id}')?{params:z.object({conversation_id:Id})}:{})},responses:{200:{description:'Success'},...(method==='post'&&path.includes('/messages')?{201:{description:'Message created'}}:{}),401:{description:'Invalid token'},403:{description:'Only accepted friends may access messages'},404:{description:'Conversation not found or not a participant'},409:{description:'Conflicting retry ID'},422:{description:'Invalid input'},429:{description:'Too many messages'},503:{description:'Identity, Social or database unavailable; access denied'}}});
+}

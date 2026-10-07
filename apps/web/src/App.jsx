@@ -1,3 +1,4 @@
+import Messages from './pages/Messages.jsx';
 import FeedNavigation from './components/FeedNavigation.jsx';
 import Connections from './pages/Connections.jsx';
 import { useEffect, useState } from 'react';
@@ -141,6 +142,7 @@ function App() {
   if (session) {
     return <><FeedNavigation session={session} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError} /><Routes>
       <Route path="/" element={<Home session={session} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError} />} />
+      <Route path="/messages" element={<Messages session={session}/>} />
       <Route path="/connections" element={<Connections session={session} />} />
       <Route path="/create" element={<CreatePost session={session} />} />
       <Route path="/profiles/:username" element={<Profile key={pathname} session={session} onUpdated={data=>setSession(previous=>previous?{...previous,user:{...previous.user,...data}}:previous)} />} />

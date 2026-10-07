@@ -46,7 +46,7 @@ const sequelize = new Sequelize(
         port: config.DB_PORT,
         dialect: config.DB_DIALECT,
 
-        logging: config.ENVIRONMENT === 'development' ? console.log : false,
+        logging: process.env.DB_LOGGING === 'true' ? console.log : false,
 
         pool: {
             max: 10,

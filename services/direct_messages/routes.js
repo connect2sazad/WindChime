@@ -56,8 +56,8 @@ router.get('/', (req, res) => {
 router.use(routes.health);
 
 // other api
-router.use(config.API_PREFIX, routes.auth);
-router.use(config.API_PREFIX, routes.users);
+router.use(config.API_PREFIX, routes.messaging);
+router.use(config.API_PREFIX, routes.health);
 
 
 export default router;

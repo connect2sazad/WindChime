@@ -5,7 +5,17 @@ import { getComments } from '../src/api/comments.js';
 import { updatePost,deletePost } from '../src/api/posts.js';
 import { getPosts } from '../src/api/posts.js';
 import { getProfileByUsername } from '../src/api/users.js';
+import { sendMessage,getMessages,startConversation } from '../src/api/messages.js';
 afterEach(()=>mock.restoreAll());
+test('DM sends authenticated text and preserves the retry UUID',async()=>{
+ const id=crypto.randomUUID();mock.method(globalThis,'fetch',async(url,options)=>{assert.ok(String(url).endsWith('/conversations/4/messages'));assert.equal(options.headers.Authorization,'Bearer test');assert.deepEqual(JSON.parse(options.body),{content:'Hello',client_message_id:id});return new Response(JSON.stringify({success:true,data:{id:8,content:'Hello'}}));});assert.equal((await sendMessage('test',4,'Hello',id)).id,8);
+});
+test('DM history requests new messages with a cursor',async()=>{
+ mock.method(globalThis,'fetch',async url=>{assert.ok(String(url).endsWith('/conversations/4/messages?after=8'));return new Response(JSON.stringify({success:true,data:[]}));});assert.deepEqual((await getMessages('test',4,{after:8})).data,[]);
+});
+test('nonfriend DM denial is shown without treating it as a logout',async()=>{
+ mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({success:false,message:'Only accepted friends can message each other'}),{status:403}));await assert.rejects(()=>startConversation('test',2),error=>error.status===403&&error.message.includes('friends'));
+});
 test('username profile lookup uses the username endpoint',async()=>{
  mock.method(globalThis,'fetch',async url=>{assert.ok(String(url).endsWith('/profiles/connect2sazad'));return new Response(JSON.stringify({success:true,data:{id:2,username:'connect2sazad'}}));});assert.equal((await getProfileByUsername('test','connect2sazad')).id,2);
 });

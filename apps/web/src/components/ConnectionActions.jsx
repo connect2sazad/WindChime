@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect,useRef,useState } from 'react';
 import { getRelationship,sendFriendRequest,respondRequest,followPerson } from '../api/connections.js';
 export default function ConnectionActions({session,userId,onChange}){
@@ -8,7 +9,7 @@ export default function ConnectionActions({session,userId,onChange}){
  if(!relation)return <span role={error?'alert':'status'}>{error||'Loading connection…'}</span>;
  const friendship=relation.friendship;const incoming=friendship?.requester_id!==session.user.id;
  return <div className="wc-person-actions">
-  {friendship?.status==='accepted'?<span className="wc-friends-label">✓ Friends</span>:friendship?.status==='pending'?(incoming?<><button disabled={busy} onClick={()=>act(()=>respondRequest(session.token,friendship.id,'accept'))}>Accept</button><button className="secondary" disabled={busy} onClick={()=>act(()=>respondRequest(session.token,friendship.id,'reject'))}>Decline</button></>:<button className="secondary" disabled={busy} onClick={()=>act(()=>respondRequest(session.token,friendship.id,'cancel'))}>Cancel request</button>):!friendship||friendship.status==='cancelled'?<button disabled={busy} onClick={()=>act(()=>sendFriendRequest(session.token,userId))}>Add friend</button>:<span className="wc-friends-label">Request {friendship.status}</span>}
+  {friendship?.status==='accepted'?<><span className="wc-friends-label">✓ Friends</span><Link className="wc-message-friend" to={'/messages?with='+userId}>Message</Link></>:friendship?.status==='pending'?(incoming?<><button disabled={busy} onClick={()=>act(()=>respondRequest(session.token,friendship.id,'accept'))}>Accept</button><button className="secondary" disabled={busy} onClick={()=>act(()=>respondRequest(session.token,friendship.id,'reject'))}>Decline</button></>:<button className="secondary" disabled={busy} onClick={()=>act(()=>respondRequest(session.token,friendship.id,'cancel'))}>Cancel request</button>):!friendship||friendship.status==='cancelled'?<button disabled={busy} onClick={()=>act(()=>sendFriendRequest(session.token,userId))}>Add friend</button>:<span className="wc-friends-label">Request {friendship.status}</span>}
   <button className="secondary" disabled={busy} onClick={()=>act(()=>followPerson(session.token,userId,relation.following))}>{relation.following?'Following · Unfollow':'Follow'}</button>
   {relation.follows_you&&<small>Follows you</small>}{error&&<p role="alert">{error}</p>}
  </div>;

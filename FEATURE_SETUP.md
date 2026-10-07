@@ -1,5 +1,9 @@
 # Registration, profiles and media
 
+## Direct messages
+
+The separate `services/direct_messages` service runs at localhost:3103 and uses `windchime_direct_messages`. Its schema is migrated locally. Identity and Social must be running. Open Messages in the navbar, or Message on an accepted friend's profile. Only accepted friends and conversation participants can access messages; follow/pending status is insufficient. Includes text messages, safe retries, unread counts, read receipts and paginated history. Updates use four-second polling. See `services/direct_messages/DM_SETUP.md` for startup and API details.
+
 ## Test registration locally
 
 Open `/identity/new/`. Username and email availability are checked after a short typing pause. Database uniqueness remains the final authority when requests arrive concurrently.

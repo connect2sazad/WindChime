@@ -36,7 +36,7 @@ const path = require("path");
 
 module.exports = {
   config: path.resolve("config", "sequelize-cli.cjs"),
-  "migrations-path": path.resolve("migrations"),
+  "migrations-path": path.resolve("migrations", "dm"),
   "models-path": path.resolve("models"),
   "seeders-path": path.resolve("seeders"),
 };

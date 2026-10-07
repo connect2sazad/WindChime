@@ -47,9 +47,10 @@ const taskapp = express();
 // =========================
 taskapp.use(middlewares.ReqIdPolicy);
 taskapp.use(middlewares.CorsPolicy);
-taskapp.use(express.json());
+taskapp.use(express.json({limit:"24kb"}));
 taskapp.use(express.urlencoded({
-    extended: true,
+    extended: false,
+    limit: "24kb",
 }));
 
 
