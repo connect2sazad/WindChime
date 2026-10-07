@@ -80,3 +80,23 @@ test('comment reactor API includes reaction segregation',async()=>{
  });
  assert.deepEqual((await getCommentReactors('test',3,8,'laugh')).data,[]);
 });
+
+test('registration reads data.id and automatically logs in with submitted credentials',async()=>{
+ const {register}=await import('../src/api/auth.js');const calls=[];
+ mock.method(globalThis,'fetch',async(url,options)=>{
+  const payload=JSON.parse(options.body);calls.push({url,payload});
+  return new Response(JSON.stringify(url.endsWith('/auth/register')
+    ?{success:true,data:{id:2,name:'New Member'}}
+    :{success:true,data:{id:2,name:'New Member',token:{token:'test-session-token'}}}));
+ });
+ const result=await register('New Member','newmember','new@example.com','Secret@123','Secret@123');
+ assert.equal(result.token,'test-session-token');assert.equal(result.user.id,2);
+ assert.deepEqual(calls[0].payload,{name:'New Member',username:'newmember',email:'new@example.com',password:'Secret@123',confirm_password:'Secret@123'});
+ assert.deepEqual(calls[1].payload,{username:'newmember',password:'Secret@123'});
+});
+test('registration login failure is marked as an already-created account',async()=>{
+ const {register}=await import('../src/api/auth.js');
+ mock.method(globalThis,'fetch',async url=>new Response(JSON.stringify(url.endsWith('/auth/register')
+  ?{success:true,data:{id:2}}:{success:false,message:'Rate limited'}),{status:url.endsWith('/auth/register')?201:429}));
+ await assert.rejects(()=>register('Tester','tester','test@example.com','Secret@123','Secret@123'),error=>error.accountCreated===true&&error.status===429);
+});
