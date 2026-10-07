@@ -1,2 +1,5 @@
 .env
 node_modules
+.backups/
+uploads/
+.npm-cache/

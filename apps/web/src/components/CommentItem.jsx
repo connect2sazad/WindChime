@@ -1,203 +1,99 @@
+import CommentReactionControl from './CommentReactionControl.jsx';
+import ReactionsDialog from './ReactionsDialog.jsx';
+import CommentOptions from './CommentOptions.jsx';
 import { useEffect, useRef, useState } from 'react';
-import { getComments, createComment, deleteComment } from '../api/comments.js';
+import RelativeTime from './RelativeTime.jsx';
+import { getComments } from '../api/comments.js';
 
-export default function CommentItem({ comment, postId, token, currentUser, onDeleted }) {
+function nameOf(record, user) {
+    return record.creator_id === user.id ? user.name : `Member #${record.creator_id}`;
+}
+function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, token }) {
+    const [reactorsOpen, setReactorsOpen] = useState(false);
+    const name = nameOf(record, currentUser);
+    return (
+        <div className="wc-ig-row">
+            <span className="wc-avatar small" aria-hidden="true">{name.slice(0,2).toUpperCase()}</span>
+            <div className="wc-ig-body">
+                <p><strong>{name}</strong> <span>{record.content}</span></p>
+                <div className="wc-ig-meta">
+                    <RelativeTime value={record.created_at} />
+                    <button type="button" disabled={busy} onClick={()=>onReply(record)}>Reply</button>
+                    <CommentOptions disabled={busy} isReply={Boolean(record.parent_id)}
+                        onViewReactions={()=>setReactorsOpen(true)}
+                        onDelete={record.creator_id===currentUser.id?()=>onDelete(record):undefined} />
+                </div>
+            </div>
+            <CommentReactionControl token={token} postId={postId} commentId={record.id} disabled={busy} />
+            {reactorsOpen && <ReactionsDialog token={token} postId={postId} commentId={record.id} onClose={()=>setReactorsOpen(false)} />}
+        </div>
+    );
+}
+
+export default function CommentItem({ comment, postId, token, currentUser, replyCount = 0, onReply, onDelete, version, busy }) {
     const [open, setOpen] = useState(false);
     const [replies, setReplies] = useState([]);
-    const [total, setTotal] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [loadError, setLoadError] = useState('');
-    const [saveError, setSaveError] = useState('');
-    const [draft, setDraft] = useState('');
-    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
     const pending = useRef(false);
-    const [deleting, setDeleting] = useState(false);
-    const [deleteError, setDeleteError] = useState('');
-    const deletePending = useRef(false);
-
-    function author(record) {
-        return record.creator_id === currentUser.id
-            ? currentUser.name
-            : `Member #${record.creator_id}`;
-    }
 
     useEffect(() => {
         if (!open) return;
-
         const controller = new AbortController();
-
         async function load() {
             setLoading(true);
-            setLoadError('');
-
+            setError('');
             try {
-                const result = await getComments(
-                    token, postId, controller.signal, comment.id
-                );
-
+                const result = await getComments(token, postId, controller.signal, comment.id);
                 if (!controller.signal.aborted) {
                     setReplies(result.data);
-                    setTotal(result.pagination.total);
+                    setPage(1);
+                    setHasMore(result.pagination.has_next_page);
                 }
-            } catch (error) {
-                if (!controller.signal.aborted) {
-                    setLoadError(error.message || 'Unable to load replies');
-                }
-            } finally {
-                if (!controller.signal.aborted) setLoading(false);
-            }
+            } catch (e) { if (!controller.signal.aborted) setError(e.message); }
+            finally { if (!controller.signal.aborted) setLoading(false); }
         }
-
         load();
         return () => controller.abort();
-    }, [open, token, postId, comment.id]);
+    }, [open, token, postId, comment.id, version]);
 
-    async function remove() {
-        if (deletePending.current || pending.current || saving) return;
-
-        const confirmed = window.confirm(
-            'Delete this comment? Its replies will also be hidden.'
-        );
-        if (!confirmed) return;
-
-        deletePending.current = true;
-        setDeleting(true);
-        setDeleteError('');
-
-        try {
-            await deleteComment(token, postId, comment.id);
-            onDeleted(comment.id);
-        } catch (error) {
-            setDeleteError(
-                error instanceof TypeError || error.name === 'TimeoutError'
-                    ? 'Could not confirm deletion. Refresh before retrying.'
-                    : error.message
-            );
-        } finally {
-            deletePending.current = false;
-            setDeleting(false);
-        }
-    }
-
-    async function submit(event) {
-        event.preventDefault();
-
-        const content = draft.trim();
-        if (!content || pending.current || deletePending.current || loading || loadError) return;
-
+    async function more() {
+        if (pending.current || loading) return;
         pending.current = true;
-        setSaving(true);
-        setSaveError('');
-
+        setLoading(true);
+        setError('');
         try {
-            const reply = await createComment(
-                token, postId, content, comment.id
-            );
-
-            setReplies(previous => [reply, ...previous]);
-            setTotal(previous => (previous ?? 0) + 1);
-            setDraft('');
-        } catch (error) {
-            setSaveError(
-                error instanceof TypeError || error.name === 'TimeoutError'
-                    ? 'Could not confirm your reply. Reopen the thread before retrying.'
-                    : error.message
-            );
-        } finally {
-            pending.current = false;
-            setSaving(false);
-        }
+            const result = await getComments(token, postId, undefined, comment.id, page + 1);
+            setReplies(previous => [...previous, ...result.data.filter(row => !previous.some(item => item.id === row.id))]);
+            setPage(value => value + 1);
+            setHasMore(result.pagination.has_next_page);
+        } catch (e) { setError(e.message); }
+        finally { pending.current = false; setLoading(false); }
     }
 
+    function reply(record) {
+        setOpen(true);
+        onReply({ parentId: comment.id, name: nameOf(record, currentUser) });
+    }
     return (
-        <div className="wc-thread">
-            <div className="wc-comment">
-                <span className="wc-avatar small" aria-hidden="true">
-                    {author(comment).slice(0, 2).toUpperCase()}
-                </span>
-
-                <div className="wc-thread-body">
-                    <strong>{author(comment)}</strong>
-                    <p>{comment.content}</p>
-
-                    <span className="wc-comment-date">{comment.created_at}</span>
-                    <button
-                        type="button"
-                        className="wc-reply-link"
-                        aria-expanded={open}
-                        aria-controls={`replies-${comment.id}`}
-                        disabled={saving || deleting}
-                        onClick={() => setOpen(value => !value)}
-                    >
-                        {open ? 'Hide replies'
-                            : total === null ? 'Reply'
-                                : `Reply · ${total}`}
-                    </button>
-                    {comment.creator_id === currentUser.id && (
-                        <button
-                            type="button"
-                            className="wc-reply-link"
-                            disabled={deleting || saving}
-                            onClick={remove}
-                        >
-                            {deleting ? 'Deleting…' : 'Delete'}
-                        </button>
-                    )}
-
-                    {deleteError && <p role="alert">{deleteError}</p>}
-                </div>
-            </div>
-
+        <div className="wc-ig-thread">
+            <CommentRow record={comment} currentUser={currentUser} onReply={reply} onDelete={onDelete} busy={busy} postId={postId} token={token} />
+            {(replyCount > 0 || open) && (
+                <button type="button" className="wc-ig-view-replies" aria-expanded={open}
+                    onClick={() => setOpen(value => !value)}>
+                    <span aria-hidden="true" />{open ? 'Hide replies' : `View replies (${replyCount})`}
+                </button>
+            )}
             {open && (
-                <section id={`replies-${comment.id}`}
-                    className="wc-replies" aria-label="Replies">
-                    {loading && <p role="status">Loading replies…</p>}
-                    {loadError && <p role="alert">{loadError}</p>}
-
-                    {!loading && !loadError && (
-                        <>
-                            {replies.length === 0 && (
-                                <p className="wc-reply-empty">Continue the conversation.</p>
-                            )}
-
-                            {replies.map(reply => (
-                                <div className="wc-comment" key={reply.id}>
-                                    <span className="wc-avatar small" aria-hidden="true">
-                                        {author(reply).slice(0, 2).toUpperCase()}
-                                    </span>
-                                    <div>
-                                        <strong>{author(reply)}</strong>
-                                        <p>{reply.content}</p>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {total > replies.length && (
-                                <p className="wc-reply-empty">
-                                    Showing {replies.length} of {total} replies.
-                                </p>
-                            )}
-                        </>
-                    )}
-
-                    {saveError && <p role="alert">{saveError}</p>}
-
-                    <form className="wc-comment-form" onSubmit={submit}>
-                        <input
-                            aria-label={`Reply to ${author(comment)}`}
-                            placeholder={`Reply to ${author(comment)}…`}
-                            value={draft}
-                            onChange={event => setDraft(event.target.value)}
-                            maxLength={2000}
-                            disabled={saving}
-                            required
-                        />
-                        <button type="submit"
-                            disabled={!draft.trim() || saving || deleting || loading || Boolean(loadError)}>
-                            {saving ? '…' : 'Reply'}
-                        </button>
-                    </form>
-                </section>
+                <div className="wc-ig-replies">
+                    {replies.map(record => <CommentRow key={record.id} record={record} currentUser={currentUser}
+                        onReply={reply} onDelete={onDelete} busy={busy} postId={postId} token={token} />)}
+                    {loading && <p className="wc-ig-status" role="status">Loading replies…</p>}
+                    {error && <p className="wc-ig-status" role="alert">{error}</p>}
+                    {!loading && hasMore && <button className="wc-ig-view-replies" type="button" onClick={more}>View more replies</button>}
+                </div>
             )}
         </div>
     );

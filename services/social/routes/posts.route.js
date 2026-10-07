@@ -84,4 +84,7 @@ router.get(
     (req, res, next) => Controllers.post_reaction_controller.summary(req, res, next)
 );
 
+router.get(POSTS_ID_REACTION + '/people', Middlewares.identityAuth,
+    (req, res, next) => Controllers.post_reaction_controller.people(req, res, next));
+
 export default router;

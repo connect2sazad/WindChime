@@ -1,3 +1,7 @@
+import ReactionIcon from '../components/ReactionIcon.jsx';
+import { REACTIONS } from '../utils/reactionTypes.js';
+import ReactionsDialog from '../components/ReactionsDialog.jsx';
+import RelativeTime from '../components/RelativeTime.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { getPosts, createPost } from '../api/posts.js';
 import {
@@ -10,17 +14,11 @@ import {
     addRepost,
     undoRepost,
 } from '../api/reposts.js';
-import { getComments, createComment } from '../api/comments.js';
-import CommentItem from '../components/CommentItem.jsx';
+import { getCommentSummary } from '../api/comments.js';
+import CommentsPanel from '../components/CommentsPanel.jsx';
 import './Home.css';
 
-const REACTIONS = [
-    { type: 'like', label: 'Like', icon: '👍' },
-    { type: 'love', label: 'Love', icon: '❤️' },
-    { type: 'laugh', label: 'Laugh', icon: '😂' },
-    { type: 'sad', label: 'Sad', icon: '😢' },
-    { type: 'angry', label: 'Angry', icon: '😠' },
-];
+
 
 function Icon({ name, size = 22 }) {
     const paths = {
@@ -61,6 +59,7 @@ function PostCard({ post, currentUser, token }) {
     const [reactionBusy, setReactionBusy] = useState(false);
     const [reactionError, setReactionError] = useState('');
     const [expanded, setExpanded] = useState(false);
+    const [reactorsOpen, setReactorsOpen] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
     const reactionControl = useRef(null);
     const holdTimer = useRef(null);
@@ -76,14 +75,14 @@ function PostCard({ post, currentUser, token }) {
     const [repostBusy, setRepostBusy] = useState(false);
     const [repostError, setRepostError] = useState('');
     const repostPending = useRef(false);
-    const [comments, setComments] = useState([]);
+
     const [commentsLoading, setCommentsLoading] = useState(false);
     const [commentsError, setCommentsError] = useState('');
     const [commentTotal, setCommentTotal] = useState(null);
-    const [commentDraft, setCommentDraft] = useState('');
-    const [commentSaving, setCommentSaving] = useState(false);
-    const [commentSaveError, setCommentSaveError] = useState('');
-    const commentPending = useRef(false);
+
+
+
+
 
     useEffect(() => {
         if (!pickerOpen) return;
@@ -133,39 +132,6 @@ function PostCard({ post, currentUser, token }) {
         return () => controller.abort();
     }, [token, post.id]);
 
-    function commentDeleted(id) {
-        setComments(previous => previous.filter(comment => comment.id !== id));
-        setCommentTotal(previous => Math.max(0, (previous ?? 0) - 1));
-    }
-
-    async function addComment(event) {
-        event.preventDefault();
-
-        const content = commentDraft.trim();
-        if (!content || commentPending.current || commentsLoading || commentsError) return;
-
-        commentPending.current = true;
-        setCommentSaving(true);
-        setCommentSaveError('');
-
-        try {
-            const comment = await createComment(token, post.id, content);
-
-            setComments(previous => [comment, ...previous]);
-            setCommentTotal(previous => (previous ?? 0) + 1);
-            setCommentDraft('');
-        } catch (error) {
-            setCommentSaveError(
-                error instanceof TypeError || error.name === 'TimeoutError'
-                    ? 'Could not confirm your comment. Refresh before retrying.'
-                    : error.message
-            );
-        } finally {
-            commentPending.current = false;
-            setCommentSaving(false);
-        }
-    }
-
     useEffect(() => {
         const controller = new AbortController();
 
@@ -208,13 +174,12 @@ function PostCard({ post, currentUser, token }) {
             setCommentsError('');
 
             try {
-                const result = await getComments(
+                const result = await getCommentSummary(
                     token, post.id, controller.signal
                 );
 
                 if (!controller.signal.aborted) {
-                    setComments(result.data);
-                    setCommentTotal(result.pagination.total);
+                    setCommentTotal(result.total);
                 }
             } catch (error) {
                 if (!controller.signal.aborted) {
@@ -346,7 +311,7 @@ function PostCard({ post, currentUser, token }) {
                 <Avatar name={post.name} tone={post.tone} />
                 <div>
                     <strong>{post.name}</strong>
-                    <p>@{post.username} <span>· {post.time}</span></p>
+                    <p>@{post.username} <span>· <RelativeTime value={post.created_at} /></span></p>
                 </div>
                 <span className="wc-post-flower" aria-hidden="true">✳</span>
             </header>
@@ -381,10 +346,10 @@ function PostCard({ post, currentUser, token }) {
                         onClick={clickReaction}
                     >
                         <span aria-hidden="true">
-                            {selectedReaction?.icon || '👍'}
+                            <ReactionIcon name={selectedReaction?.icon || 'like'} size={20} colored={Boolean(selectedReaction)} />
                         </span>
                         <span>
-                            {summary.total} reactions
+                            {reactionLoading ? 'Loading…' : reactionBusy ? 'Saving…' : selectedReaction?.label || 'Like'}
                         </span>
                     </button>
                     {pickerOpen && (
@@ -405,7 +370,7 @@ function PostCard({ post, currentUser, token }) {
                                         disabled={reactionBusy}
                                         onClick={() => chooseReaction(item.type)}
                                     >
-                                        <span aria-hidden="true">{item.icon}</span>
+                                        <ReactionIcon name={item.icon} size={28} colored />
                                         <small className="wc-picker-count">{summary.counts[item.type] || 0}</small>
                                     </button>
                                 ))}
@@ -415,6 +380,12 @@ function PostCard({ post, currentUser, token }) {
                         </div>
                     )}
                 </div>
+
+                <button type="button" className="wc-reaction-details" disabled={reactionLoading || Boolean(reactionError)}
+                    aria-label="See who reacted to this post" onClick={() => setReactorsOpen(true)}>
+                    <span aria-hidden="true">{REACTIONS.filter(item => summary.counts[item.type] > 0).slice(0,3).map(item => <ReactionIcon key={item.type} name={item.icon} size={18} colored />)}</span>
+                    {summary.total} {summary.total === 1 ? 'reaction' : 'reactions'}
+                </button>
 
                 {/* reposts */}
                 <button
@@ -438,7 +409,7 @@ function PostCard({ post, currentUser, token }) {
                     <Icon name="comment" size={20} />
                     <span>
                         {commentTotal === null
-                            ? commentsError ? 'Comments' : 'Loading…'
+                            ? commentsError ? 'Comments' : commentsLoading ? 'Loading…' : 'Comments'
                             : commentTotal + (commentTotal == 1 ? ' comment' : ' comments')}
                     </span>
                 </button>
@@ -454,64 +425,10 @@ function PostCard({ post, currentUser, token }) {
             )}
 
             {expanded && (
-                <section className="wc-comments" aria-label="Comments">
-
-                    {commentSaveError && (
-                        <p className="mt-3" role="alert">{commentSaveError}</p>
-                    )}
-
-                    <form className="wc-comment-form" onSubmit={addComment}>
-                        <input
-                            aria-label="Write a comment"
-                            placeholder="Add to the conversation…"
-                            value={commentDraft}
-                            onChange={event => setCommentDraft(event.target.value)}
-                            maxLength={2000}
-                            disabled={commentSaving}
-                            required
-                        />
-                        <button
-                            type="submit"
-                            disabled={
-                                !commentDraft.trim() ||
-                                commentSaving ||
-                                commentsLoading ||
-                                Boolean(commentsError)
-                            }
-                            aria-label={commentSaving ? 'Posting comment' : 'Post comment'}
-                        >
-                            {commentSaving ? '…' : <Icon name="arrow" size={19} />}
-                        </button>
-                    </form>
-
-                    {commentsLoading && (
-                        <p role="status">Loading comments…</p>
-                    )}
-
-                    {commentsError && (
-                        <p role="alert">{commentsError}</p>
-                    )}
-
-                    {!commentsLoading && !commentsError && comments.length === 0 && (
-                        <p>Be the first to start a conversation.</p>
-                    )}
-
-                    {!commentsLoading && !commentsError && comments.map(comment => (
-                        <CommentItem
-                            key={comment.id}
-                            comment={comment}
-                            postId={post.id}
-                            token={token}
-                            currentUser={currentUser}
-                            onDeleted={commentDeleted}
-                        />
-                    ))}
-
-                    {!commentsLoading && !commentsError && commentTotal > comments.length && (
-                        <p>Showing the latest {comments.length} of {commentTotal} comments.</p>
-                    )}
-                </section>
+                <CommentsPanel post={post} token={token} currentUser={currentUser}
+                    onClose={() => setExpanded(false)} onCountChange={setCommentTotal} reactionSummary={summary} />
             )}
+            {reactorsOpen && <ReactionsDialog token={token} postId={post.id} onClose={() => setReactorsOpen(false)} />}
         </article>
     );
 }
@@ -548,7 +465,6 @@ export default function Home({
                         ...post,
                         name: mine ? user.name : `Member #${post.creator_id}`,
                         username: mine ? user.username : `member-${post.creator_id}`,
-                        time: new Date(post.created_at).toLocaleString(),
                         tone: mine ? 'lime' : '',
                         topic: 'A SHARED MOMENT',
                         replies: [],
@@ -589,7 +505,6 @@ export default function Home({
                 ...post,
                 name: user.name,
                 username: user.username,
-                time: new Date(post.created_at).toLocaleString(),
                 tone: 'lime',
                 topic: 'YOUR MOMENT',
                 replies: [],

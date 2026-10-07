@@ -16,3 +16,11 @@ export async function getReactionSummary(token, postId, signal) {
     if (!Number.isInteger(data?.total) || !data.counts || !Object.hasOwn(data, 'my_reaction')) throw new Error('Unexpected reaction summary');
     return data;
 }
+
+export async function getReactors(token, postId, type = null, page = 1, signal) {
+    const query = new URLSearchParams({ page: String(page), limit: '20' });
+    if (type) query.set('type', type);
+    const body = await apiRequest(SOCIAL_API, `/posts/${postId}/reactions/people?${query}`, { token, signal });
+    if (!Array.isArray(body.data)) throw new Error('Unexpected reactor list');
+    return body;
+}

@@ -8,6 +8,12 @@ const COMMENTS = '/posts/:post_id/comments';
 const COMMENTS_ID = COMMENTS + '/:comment_id';
 const COMMENTS_ID_REACTION = COMMENTS_ID + '/reactions';
 
+router.get(COMMENTS + '/summary', Middlewares.identityAuth,
+    (req, res, next) => Controllers.comment_controller.summary(req, res, next));
+
+router.get(COMMENTS_ID_REACTION + '/summary', Middlewares.identityAuth,
+    (req, res, next) => Controllers.comment_reaction_controller.summary(req, res, next));
+
 // add a new comment to post
 router.post(
     COMMENTS,
@@ -57,5 +63,8 @@ router.delete(COMMENTS_ID_REACTION, Middlewares.identityAuth,
     (req, res, next) => Controllers.comment_reaction_controller.remove(req, res, next)
 );
 
+
+router.get(COMMENTS_ID_REACTION + '/people', Middlewares.identityAuth,
+    (req, res, next) => Controllers.comment_reaction_controller.people(req, res, next));
 
 export default router;

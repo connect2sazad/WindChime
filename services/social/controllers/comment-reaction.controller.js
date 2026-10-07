@@ -1,3 +1,4 @@
+import { fn, col } from 'sequelize';
 import BaseController from './base.controller.js';
 import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
@@ -37,6 +38,44 @@ class CommentReactionController extends BaseController{
             if (!parent) throw new errors.NotFoundException('Parent comment not found');
         }
         return scope;
+    }
+
+    async summary(req, res, next) {
+        try {
+            this.isAuthorized(req);
+            const { comment_id } = await this.getScope(req);
+            const rows = await this.model.findAll({
+                attributes: ['type', [fn('COUNT', col('id')), 'count']],
+                where: { comment_id }, group: ['type'], raw: true,
+            });
+            const counts = { like: 0, love: 0, laugh: 0, sad: 0, angry: 0 };
+            for (const row of rows) if (Object.hasOwn(counts, row.type)) counts[row.type] = Number(row.count);
+            const mine = await this.model.findOne({ where: { comment_id, creator_id: req.auth.id } });
+            return res.status(200).json(utils.helpers.structurize_response(
+                true, 'Comment reaction summary retrieved',
+                { counts, total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+                    my_reaction: mine ? this.serialize(mine) : null }
+            ));
+        } catch (error) { return next(error); }
+    }
+
+    async people(req, res, next) {
+        try {
+            this.isAuthorized(req);
+            const schema = Schemas.Pagination.PaginationSchema.pick({ page: true, limit: true })
+                .extend({ type: Schemas.ReactionSchemas.ReactionTypeSchema.optional() }).strict();
+            const { page, limit, type } = utils.Validations.parseRequest(schema, req.query);
+            const offset = (page - 1) * limit;
+            if (!Number.isSafeInteger(offset)) throw new errors.ValidationException('Page number is too large');
+            const { comment_id } = await this.getScope(req);
+            const { count, rows } = await this.model.findAndCountAll({
+                where: { comment_id, ...(type ? { type } : {}) },
+                attributes: ['id', 'creator_id', 'type', 'created_at'],
+                order: [['id', 'DESC']], limit, offset,
+            });
+            return res.status(200).json({ success: true, data: rows.map(row => row.toJSON()),
+                pagination: { page, limit, total: count, has_next_page: page * limit < count } });
+        } catch (error) { return next(error); }
     }
 
     async set(req, res, next){

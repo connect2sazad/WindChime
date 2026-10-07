@@ -3,6 +3,7 @@ import BaseController from './base.controller.js';
 import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
 import utils from '../utils/registry.js';
+import errors from '../errors/registry.js';
 
 class PostReactionController extends BaseController {
 
@@ -20,6 +21,25 @@ class PostReactionController extends BaseController {
         }
 
         super(Models.PostReaction, settings);
+    }
+
+    async people(req, res, next) {
+        try {
+            this.isAuthorized(req);
+            const schema = Schemas.Pagination.PaginationSchema.pick({ page: true, limit: true })
+                .extend({ type: Schemas.ReactionSchemas.ReactionTypeSchema.optional() }).strict();
+            const { page, limit, type } = utils.Validations.parseRequest(schema, req.query);
+            const offset = (page - 1) * limit;
+            if (!Number.isSafeInteger(offset)) throw new errors.ValidationException('Page number is too large');
+            const { post_id } = await this.getScope(req);
+            const { count, rows } = await this.model.findAndCountAll({
+                where: { post_id, ...(type ? { type } : {}) },
+                attributes: ['id', 'creator_id', 'type', 'created_at'],
+                order: [['id', 'DESC']], limit, offset,
+            });
+            return res.status(200).json({ success: true, data: rows.map(row => row.toJSON()),
+                pagination: { page, limit, total: count, has_next_page: page * limit < count } });
+        } catch (error) { return next(error); }
     }
 
     async getMine(req, res, next) {

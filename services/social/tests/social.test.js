@@ -255,3 +255,53 @@ test('expiry skips cancelled or fresh requests',async()=>{
  mock.method(Models.Follow,'findOrCreate',()=>assert.fail('follow created'));
  assert.equal(await Expiration.expireOne(9),false);
 });
+
+test('comment summary includes replies and excludes hidden parents',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(sequelize,'query',async(sql,options)=>{
+        assert.equal(options.replacements.post_id,3);
+        assert.match(sql,/p.deleted_at IS NULL/);assert.match(sql,/p.post_id = c.post_id/);
+        return [[{thread_id:6,top_level:'1',replies:'3'},{thread_id:8,top_level:'1',replies:'0'}],{}];
+    });
+    const r=await request('/posts/3/comments/summary');
+    assert.equal(r.status,200);assert.equal(r.body.data.total,5);assert.equal(r.body.data.top_level,2);
+    assert.equal(r.body.data.replies,3);assert.deepEqual(r.body.data.reply_counts,{'6':3,'8':0});
+});
+
+test('comment summary counts every type and identifies caller reaction',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async()=>record({id:8,post_id:3,parent_id:null}));
+    mock.method(Models.Comment,'findByPk',async()=>record({id:8,post_id:3,parent_id:null}));
+    mock.method(Models.CommentReaction,'findAll',async options=>{assert.deepEqual(options.where,{comment_id:8});return [{type:'like',count:'2'},{type:'love',count:'1'}];});
+    mock.method(Models.CommentReaction,'findOne',async()=>null);
+    const r=await request('/posts/3/comments/8/reactions/summary');
+    assert.equal(r.status,200);assert.equal(r.body.data.total,3);assert.equal(r.body.data.counts.like,2);assert.equal(r.body.data.counts.love,1);assert.equal(r.body.data.my_reaction,null);
+});
+
+test('reactor list segregates types and keeps pagination',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.PostReaction,'findAndCountAll',async options=>{
+        assert.deepEqual(options.where,{post_id:3,type:'love'});assert.equal(options.offset,20);assert.equal(options.limit,20);
+        return {count:21,rows:[record({creator_id:2,type:'love'})]};
+    });
+    const r=await request('/posts/3/reactions/people?type=love&page=2&limit=20');
+    assert.equal(r.status,200);assert.equal(r.body.data[0].type,'love');assert.equal(r.body.pagination.total,21);
+});
+test('reactor list rejects unknown reaction types',async()=>{
+    identity();assert.equal((await request('/posts/3/reactions/people?type=unknown')).status,422);
+});
+
+test('comment reactor list filters each reaction within the URL post',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async options=>{assert.deepEqual(options.where,{id:8,post_id:3});return record({id:8,post_id:3,parent_id:null});});
+    mock.method(Models.Comment,'findByPk',async()=>record({id:8,post_id:3,parent_id:null}));
+    mock.method(Models.CommentReaction,'findAndCountAll',async options=>{
+        assert.deepEqual(options.where,{comment_id:8,type:'angry'});assert.equal(options.limit,20);
+        return {count:1,rows:[record({comment_id:8,type:'angry'})]};
+    });
+    const r=await request('/posts/3/comments/8/reactions/people?type=angry&limit=20');
+    assert.equal(r.status,200);assert.equal(r.body.data[0].type,'angry');
+});
+test('comment reactor list rejects invalid type',async()=>{
+    identity();assert.equal((await request('/posts/3/comments/8/reactions/people?type=other')).status,422);
+});
