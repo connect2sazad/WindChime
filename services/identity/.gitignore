@@ -1,2 +1,7 @@
 .env
 node_modules
+.backups/
+.npm-cache/
+
+.mail-outbox/
+uploads/

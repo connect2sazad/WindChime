@@ -168,18 +168,19 @@ test('reset password cannot be invoked for another user', async () => {
     assert.equal(failure.statusCode, 403);
 });
 
-test('registration hashes passwords and serializes inside a transaction', async () => {
-    mock.method(Models.User, 'findOne', async () => null);
-    const transaction = {};
-    mock.method(sequelize, 'transaction', async callback => callback(transaction));
-    mock.method(Models.User, 'create', async (values, options) => {
-        assert.equal(options.transaction, transaction);
-        assert.ok(await bcrypt.compare('secret123', values.password));
-        assert.equal(values.confirm_password, undefined);
-        return user;
+test('registration hashes passwords but creates no user before email verification', async () => {
+    const {default:Pending}=await import('../models/pending-signup.model.js');
+    const {default:Mail}=await import('../services/mail.service.js');
+    mock.method(Models.User,'findOne',async()=>null);
+    mock.method(Models.User,'create',()=>assert.fail('Unverified user was created'));
+    mock.method(Pending,'create',async values=>{
+        assert.ok(await bcrypt.compare('secret123',values.password_hash));
+        assert.equal(values.password,undefined);assert.equal(values.code_hash.length,64);
+        return {...values,destroy:async()=>{}};
     });
-    const result = await request('/api/v1/auth/register', post({ username: 'tester', name: 'Tester', email: 'test@example.com', password: 'secret123', confirm_password: 'secret123' }));
-    assert.equal(result.status, 201); assert.equal(result.body.data.password, undefined);
+    mock.method(Mail,'sendVerification',async(email,code)=>{assert.equal(email,'test@example.com');assert.match(code,/^\d{6}$/);return {delivery:'outbox'};});
+    const result=await request('/api/v1/auth/register',post({username:'tester',name:'Tester',email:'test@example.com',password:'secret123',confirm_password:'secret123'}));
+    assert.equal(result.status,202);assert.equal(typeof result.body.data.verification_id,'string');assert.equal(result.body.data.code,undefined);
 });
 
 test('Swagger describes the actual protected users and auth routes', async () => {

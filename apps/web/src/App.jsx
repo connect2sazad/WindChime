@@ -1,10 +1,15 @@
+import FeedNavigation from './components/FeedNavigation.jsx';
+import Connections from './pages/Connections.jsx';
 import { useEffect, useState } from 'react';
 import './App.css';
 import { login, getCurrentUser, logout } from './api/auth.js';
 import Home from './pages/Home.jsx';
-import { Link } from 'react-router-dom';
+import { Link, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import Profile from './pages/Profile.jsx';
+import CreatePost from './pages/CreatePost.jsx';
 
 function App() {
+  const {pathname}=useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -134,14 +139,13 @@ function App() {
   }
 
   if (session) {
-    return (
-      <Home
-        session={session}
-        onLogout={handleLogout}
-        loggingOut={loggingOut}
-        logoutError={logoutError}
-      />
-    );
+    return <><FeedNavigation session={session} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError} /><Routes>
+      <Route path="/" element={<Home session={session} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError} />} />
+      <Route path="/connections" element={<Connections session={session} />} />
+      <Route path="/create" element={<CreatePost session={session} />} />
+      <Route path="/profiles/:user_id" element={<Profile key={pathname} session={session} onUpdated={data=>setSession(previous=>previous?{...previous,user:{...previous.user,...data}}:previous)} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes></>;
   }
 
   return (

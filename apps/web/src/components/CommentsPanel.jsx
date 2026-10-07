@@ -1,3 +1,5 @@
+import { Avatar } from './FeedVisuals.jsx';
+import PostMediaView from './PostMediaView.jsx';
 import ReactionIcon from './ReactionIcon.jsx';
 import RelativeTime from './RelativeTime.jsx';
 import ReactionsDialog from './ReactionsDialog.jsx';
@@ -21,6 +23,8 @@ export default function CommentsPanel({ post, token, currentUser, onClose, onCou
     const [hasMore, setHasMore] = useState(false);
     const [version, setVersion] = useState(0);
     const [reactorsOpen, setReactorsOpen] = useState(false);
+    const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width:767px)').matches);
+    useEffect(()=>{const query=window.matchMedia('(max-width:767px)');const update=event=>setMobile(event.matches);query.addEventListener('change',update);return()=>query.removeEventListener('change',update);},[]);
 
     useEffect(() => {
         const element = dialog.current;
@@ -129,19 +133,19 @@ export default function CommentsPanel({ post, token, currentUser, onClose, onCou
                     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
                 }
             }}>
-            <section className="wc-dialog-post-side" aria-label="Original post">
+            {!mobile && <section className="wc-dialog-post-side" aria-label="Original post">
                 <div className="wc-split-author">
-                    <span className="wc-avatar" aria-hidden="true">{post.name.slice(0,2).toUpperCase()}</span>
+                    <Avatar name={post.name} id={post.creator_id} token={token}/>
                     <div><strong>{post.name}</strong><p>@{post.username} · <RelativeTime value={post.created_at} /></p></div>
                 </div>
-                <div className="wc-split-content"><span>A SHARED MOMENT</span><p>{post.content}</p></div>
+                <div className="wc-split-content"><PostMediaView post={post} token={token}/><span>A SHARED MOMENT</span><p>{post.content}</p></div>
                 <footer className="wc-split-footer">
                     <button type="button" className="wc-reaction-details" onClick={() => setReactorsOpen(true)} aria-label="See who reacted to this post">
                         <span className="wc-reaction-inline" aria-hidden="true"><ReactionIcon name="like" size={18} colored /><ReactionIcon name="love" size={18} colored /></span> {reactionSummary?.total || 0} reactions <span aria-hidden="true">›</span>
                     </button>
                     <span>{summary.total} comments</span>
                 </footer>
-            </section>
+            </section>}
             <div className="wc-dialog-comments-side">
             <header className="wc-dialog-header">
                 <span className="wc-dialog-grip" aria-hidden="true" />
@@ -149,6 +153,7 @@ export default function CommentsPanel({ post, token, currentUser, onClose, onCou
                 <button type="button" aria-label="Close comments" onClick={onClose}>×</button>
             </header>
             <div className="wc-dialog-scroll">
+                {mobile && <div className="wc-mobile-post-context"><strong>{post.name}</strong><PostMediaView post={post} token={token}/><p>{post.content}</p></div>}
 
                 {loading && <p className="wc-ig-status" role="status">Loading comments…</p>}
                 {error && <p className="wc-ig-status" role="alert">{error}</p>}
@@ -161,7 +166,7 @@ export default function CommentsPanel({ post, token, currentUser, onClose, onCou
             <footer className="wc-dialog-composer">
                 {target && <div className="wc-reply-target"><span>Replying to <strong>{target.name}</strong></span><button type="button" disabled={busy} aria-label="Cancel reply" onClick={() => setTarget(null)}>×</button></div>}
                 <form onSubmit={submit}>
-                    <span className="wc-avatar small" aria-hidden="true">{currentUser.name.slice(0,2).toUpperCase()}</span>
+                    <Avatar name={currentUser.name} id={currentUser.id} token={token} version={currentUser.avatar_version} small/>
                     <textarea ref={input} aria-label={target ? 'Write a reply' : 'Write a comment'} placeholder={target ? 'Add a reply…' : 'Add a comment…'}
                         value={draft} onChange={event => setDraft(event.target.value)} maxLength={2000} rows={1} disabled={busy}
                         onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form.requestSubmit(); } }} />

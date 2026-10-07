@@ -81,22 +81,18 @@ test('comment reactor API includes reaction segregation',async()=>{
  assert.deepEqual((await getCommentReactors('test',3,8,'laugh')).data,[]);
 });
 
-test('registration reads data.id and automatically logs in with submitted credentials',async()=>{
- const {register}=await import('../src/api/auth.js');const calls=[];
- mock.method(globalThis,'fetch',async(url,options)=>{
-  const payload=JSON.parse(options.body);calls.push({url,payload});
-  return new Response(JSON.stringify(url.endsWith('/auth/register')
-    ?{success:true,data:{id:2,name:'New Member'}}
-    :{success:true,data:{id:2,name:'New Member',token:{token:'test-session-token'}}}));
- });
- const result=await register('New Member','newmember','new@example.com','Secret@123','Secret@123');
- assert.equal(result.token,'test-session-token');assert.equal(result.user.id,2);
- assert.deepEqual(calls[0].payload,{name:'New Member',username:'newmember',email:'new@example.com',password:'Secret@123',confirm_password:'Secret@123'});
- assert.deepEqual(calls[1].payload,{username:'newmember',password:'Secret@123'});
+test('registration starts verification without logging in',async()=>{
+ const {register}=await import('../src/api/auth.js');let calls=0;
+ mock.method(globalThis,'fetch',async(url,options)=>{calls++;assert.match(url,/auth\/register$/);assert.equal(JSON.parse(options.body).username,'newmember');return new Response(JSON.stringify({success:true,data:{verification_id:'test-verification-id',email:'new@example.com'}}),{status:202});});
+ const result=await register('New Member','newmember','new@example.com','Secret@123','Secret@123');assert.equal(result.verification_id,'test-verification-id');assert.equal(calls,1);
 });
-test('registration login failure is marked as an already-created account',async()=>{
- const {register}=await import('../src/api/auth.js');
- mock.method(globalThis,'fetch',async url=>new Response(JSON.stringify(url.endsWith('/auth/register')
-  ?{success:true,data:{id:2}}:{success:false,message:'Rate limited'}),{status:url.endsWith('/auth/register')?201:429}));
- await assert.rejects(()=>register('Tester','tester','test@example.com','Secret@123','Secret@123'),error=>error.accountCreated===true&&error.status===429);
+test('verification returns a session after a correct code',async()=>{
+ const {verifyRegistration}=await import('../src/api/auth.js');
+ mock.method(globalThis,'fetch',async(url,options)=>{assert.match(url,/register\/verify$/);assert.deepEqual(JSON.parse(options.body),{verification_id:'test-id',code:'123456'});return new Response(JSON.stringify({success:true,data:{id:2,name:'New Member',token:{token:'test-token'}}}));});
+ const result=await verifyRegistration('test-id','123456');assert.equal(result.token,'test-token');assert.equal(result.user.id,2);
+});
+test('uploads preserve FormData without manually setting Content-Type',async()=>{
+ const form=new FormData();form.append('content','Caption');
+ mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(options.body,form);assert.equal(options.headers['Content-Type'],undefined);return new Response(JSON.stringify({success:true,data:{id:1}}));});
+ await apiRequest(SOCIAL_API,'/posts',{token:'test',method:'POST',body:form});
 });

@@ -6,6 +6,7 @@ const Post = sequelize.define('Post',
     {
         ...BaseModel.BaseFields,
 
+        kind: { type: DataTypes.ENUM('post','reel'), allowNull:false, defaultValue:'post' },
         content: {
             type: DataTypes.STRING(2000),
             allowNull: false,

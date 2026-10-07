@@ -4,10 +4,11 @@ import { UserSchema } from '../schemas/user.schema.js';
 import { ParamsIdSchema } from '../schemas/base.schema.js';
 import { PaginationSchema, PaginationResponseSchema } from '../schemas/pagination.schema.js';
 import responses from './responses.js';
+const PublicUserSchema = UserSchema.omit({ email: true, email_verified_at: true });
 
 for (const single of [false, true]) {
     const schema = z.object({ success: z.literal(true), message: z.string(),
-        data: single ? UserSchema : z.array(UserSchema),
+        data: single ? PublicUserSchema : z.array(PublicUserSchema),
         ...(!single && { pagination: PaginationResponseSchema }) });
     registry.registerPath({ method: 'get', path: `${config.API_PREFIX}/users${single ? '/{id}' : ''}`,
         tags: ['Users'], summary: single ? 'Get user' : 'List users', security: [{ bearerAuth: [] }],

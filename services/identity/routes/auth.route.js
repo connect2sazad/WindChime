@@ -1,3 +1,6 @@
+import Registration from '../controllers/registration.controller.js';
+import { rateLimit } from 'express-rate-limit';
+import errors from '../errors/registry.js';
 /**
  * =============================================================================
  *
@@ -45,6 +48,11 @@ import Schemas from "../schemas/registry.js";
 import utils from "../utils/registry.js";
 
 const router = express.Router();
+const limit=(count)=>rateLimit({windowMs:15*60*1000,limit:count,standardHeaders:true,legacyHeaders:false,
+ handler:(req,res,next)=>next(new errors.TooManyRequestsException('Too many attempts. Please try later'))});
+router.post('/auth/availability',limit(120),(req,res,next)=>Registration.availability(req,res,next));
+router.post('/auth/register/verify',limit(30),(req,res,next)=>Registration.verify(req,res,next));
+router.post('/auth/register/resend',limit(10),(req,res,next)=>Registration.resend(req,res,next));
 
 const AUTH = "/auth";
 const AUTH_LOGIN = AUTH + "/login";
@@ -66,8 +74,9 @@ router.post(
 
 router.post(
     AUTH_REGISTER,
+    limit(10),
     async (req, res, next) => {
-        await Controllers.auth_controller.register(
+        await Registration.begin(
             req,
             res,
             next

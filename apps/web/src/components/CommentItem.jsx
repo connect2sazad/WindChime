@@ -1,24 +1,27 @@
+import { Avatar } from './FeedVisuals.jsx';
 import CommentReactionControl from './CommentReactionControl.jsx';
 import ReactionsDialog from './ReactionsDialog.jsx';
 import CommentOptions from './CommentOptions.jsx';
 import { useEffect, useRef, useState } from 'react';
 import RelativeTime from './RelativeTime.jsx';
 import { getComments } from '../api/comments.js';
+import { getDisplayUser } from '../api/users.js';
+import { Link } from 'react-router-dom';
 
-function nameOf(record, user) {
-    return record.creator_id === user.id ? user.name : `Member #${record.creator_id}`;
-}
 function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, token }) {
     const [reactorsOpen, setReactorsOpen] = useState(false);
-    const name = nameOf(record, currentUser);
+    const [author,setAuthor]=useState(null);
+    useEffect(()=>{const controller=new AbortController();getDisplayUser(token,record.creator_id,controller.signal).then(user=>{if(!controller.signal.aborted)setAuthor(user);}).catch(()=>{if(!controller.signal.aborted)setAuthor({id:record.creator_id,name:'Author unavailable',username:null});});return()=>controller.abort();},[token,record.creator_id]);
+    const person=record.creator_id===currentUser.id?currentUser:author?.id===record.creator_id?author:null;
+    const name=person?.name||'Loading author…';
     return (
         <div className="wc-ig-row">
-            <span className="wc-avatar small" aria-hidden="true">{name.slice(0,2).toUpperCase()}</span>
+            <Avatar name={name} id={record.creator_id} token={token} small/>
             <div className="wc-ig-body">
-                <p><strong>{name}</strong> <span>{record.content}</span></p>
+                <p><Link className="wc-comment-author" to={`/profiles/${record.creator_id}`}><strong>{name}</strong>{person?.username&&<small>@{person.username}</small>}</Link> <span>{record.content}</span></p>
                 <div className="wc-ig-meta">
                     <RelativeTime value={record.created_at} />
-                    <button type="button" disabled={busy} onClick={()=>onReply(record)}>Reply</button>
+                    <button type="button" disabled={busy} onClick={()=>onReply({...record,name})}>Reply</button>
                     <CommentOptions disabled={busy} isReply={Boolean(record.parent_id)}
                         onViewReactions={()=>setReactorsOpen(true)}
                         onDelete={record.creator_id===currentUser.id?()=>onDelete(record):undefined} />
@@ -75,7 +78,7 @@ export default function CommentItem({ comment, postId, token, currentUser, reply
 
     function reply(record) {
         setOpen(true);
-        onReply({ parentId: comment.id, name: nameOf(record, currentUser) });
+        onReply({ parentId: comment.id, name: record.name });
     }
     return (
         <div className="wc-ig-thread">

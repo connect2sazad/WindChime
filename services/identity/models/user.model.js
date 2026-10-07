@@ -66,6 +66,9 @@ const User = sequelize.define(
             allowNull: false
         },
 
+        avatar_filename: { type: DataTypes.STRING(100), allowNull: true },
+        bio: { type: DataTypes.STRING(500), allowNull: false, defaultValue: '' },
+        email_verified_at: { type: DataTypes.DATE, allowNull: true },
         last_login_at: {
             type: DataTypes.DATE,
             allowNull: true,

@@ -1,9 +1,14 @@
+import { Icon, Avatar } from '../components/FeedVisuals.jsx';
+import FriendRequestsPreview from '../components/FriendRequestsPreview.jsx';
+import { Link, useNavigate } from 'react-router-dom';
+import PostMediaView from '../components/PostMediaView.jsx';
 import ReactionIcon from '../components/ReactionIcon.jsx';
 import { REACTIONS } from '../utils/reactionTypes.js';
 import ReactionsDialog from '../components/ReactionsDialog.jsx';
 import RelativeTime from '../components/RelativeTime.jsx';
 import { useEffect, useRef, useState } from 'react';
-import { getPosts, createPost } from '../api/posts.js';
+import { getPosts } from '../api/posts.js';
+import { getDisplayUser } from '../api/users.js';
 import {
     getReactionSummary,
     setReaction,
@@ -20,40 +25,7 @@ import './Home.css';
 
 
 
-function Icon({ name, size = 22 }) {
-    const paths = {
-        home: <><path d="m3 10 9-7 9 7v10H3Z" /><path d="M9 20v-7h6v7" /></>,
-        search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
-        people: <><circle cx="9" cy="8" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3M17 5a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 6" /></>,
-        plus: <><rect x="3" y="3" width="18" height="18" rx="5" /><path d="M12 7v10M7 12h10" /></>,
-        user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
-        heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" />,
-        comment: <path d="M21 11.5a9 9 0 0 1-9 9 10 10 0 0 1-4-.9L3 21l1.4-5a9 9 0 1 1 16.6-4.5Z" />,
-        arrow: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
-        reshare: <><path d="M7 7h10a4 4 0 0 1 4 4v1" /><path d="m17 4 3 3-3 3" /><path d="M17 17H7a4 4 0 0 1-4-4v-1" /><path d="m7 20-3-3 3-3" /></>,
-    };
-
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="1.7"
-            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            {paths[name]}
-        </svg>
-    );
-}
-
-function Avatar({ name, tone = '', small = false }) {
-    const initials = name.trim().split(/\s+/)
-        .slice(0, 2).map(part => part[0]).join('').toUpperCase();
-
-    return (
-        <span className={`wc-avatar ${tone} ${small ? 'small' : ''}`} aria-hidden="true">
-            {initials}
-        </span>
-    );
-}
-
-function PostCard({ post, currentUser, token }) {
+export function PostCard({ post, currentUser, token }) {
     const [reaction, setMyReaction] = useState(null);
     const [reactionLoading, setReactionLoading] = useState(true);
     const [reactionBusy, setReactionBusy] = useState(false);
@@ -103,6 +75,9 @@ function PostCard({ post, currentUser, token }) {
         };
     }, [pickerOpen]);
 
+    const characters = Array.from(post.content || '');
+    const longText = characters.length > 280;
+    const preview = longText ? characters.slice(0,280).join('').trimEnd() + '…' : post.content;
     const selectedReaction = REACTIONS.find(
         item => item.type === reaction?.type
     );
@@ -308,17 +283,19 @@ function PostCard({ post, currentUser, token }) {
     return (
         <article className="wc-post">
             <header className="wc-post-header">
-                <Avatar name={post.name} tone={post.tone} />
+                <Avatar name={post.name} tone={post.tone} id={post.creator_id} token={token} />
                 <div>
-                    <strong>{post.name}</strong>
-                    <p>@{post.username} <span>· <RelativeTime value={post.created_at} /></span></p>
+                    <Link className="wc-author-link" to={`/profiles/${post.creator_id}`}><strong>{post.name}</strong></Link>
+                    <p>{post.username?`@${post.username}`:'Account unavailable'} <span>· <RelativeTime value={post.created_at} /></span></p>
                 </div>
                 <span className="wc-post-flower" aria-hidden="true">✳</span>
             </header>
 
             <div className="wc-post-content">
-                <span className="wc-topic">{post.topic}</span>
-                <p>{post.content}</p>
+                <span className="wc-topic">{post.kind==='reel'?'REEL':post.topic||'A SHARED MOMENT'}</span>
+                <PostMediaView post={post} token={token} />
+                {post.content && <p>{preview}</p>}
+                {longText && <button type="button" className="wc-view-more" onClick={()=>setExpanded(true)}>View more</button>}
             </div>
 
             <footer className="wc-post-actions">
@@ -435,17 +412,12 @@ function PostCard({ post, currentUser, token }) {
 
 export default function Home({
     session,
-    onLogout,
-    loggingOut,
     logoutError,
 }) {
     const [posts, setPosts] = useState([]);
     const [feedLoading, setFeedLoading] = useState(true);
     const [feedError, setFeedError] = useState('');
-    const [draft, setDraft] = useState('');
-    const [notice, setNotice] = useState('');
-    const [publishing, setPublishing] = useState(false);
-    const composer = useRef(null);
+    const route = useNavigate();
     const user = session.user;
 
     useEffect(() => {
@@ -458,13 +430,14 @@ export default function Home({
             try {
                 const result = await getPosts(session.token, controller.signal);
 
+                const authors = new Map(await Promise.all([...new Set(result.data.map(post=>post.creator_id))].map(async id=>[id,id===user.id?{id:user.id,name:user.name,username:user.username}:await getDisplayUser(session.token,id,controller.signal)])));
                 const items = result.data.map(post => {
                     const mine = post.creator_id === user.id;
 
                     return {
                         ...post,
-                        name: mine ? user.name : `Member #${post.creator_id}`,
-                        username: mine ? user.username : `member-${post.creator_id}`,
+                        name: authors.get(post.creator_id).name,
+                        username: authors.get(post.creator_id).username,
                         tone: mine ? 'lime' : '',
                         topic: 'A SHARED MOMENT',
                         replies: [],
@@ -489,97 +462,10 @@ export default function Home({
         return () => controller.abort();
     }, [session.token, user.id, user.name, user.username]);
 
-    async function publish(event) {
-        event.preventDefault();
-
-        const content = draft.trim();
-        if (!content || publishing || feedLoading) return;
-
-        setPublishing(true);
-        setNotice('');
-
-        try {
-            const post = await createPost(session.token, content);
-
-            const item = {
-                ...post,
-                name: user.name,
-                username: user.username,
-                tone: 'lime',
-                topic: 'YOUR MOMENT',
-                replies: [],
-            };
-
-            setPosts(previous => [item, ...previous]);
-            setDraft('');
-            setNotice('Your moment is shared.');
-        } catch (error) {
-            setNotice(
-                error instanceof TypeError || error.name === 'TimeoutError'
-                    ? 'Could not confirm publication. Check your feed before retrying.'
-                    : error.message
-            );
-        } finally {
-            setPublishing(false);
-        }
-    }
-
-    function navigate(item) {
-        if (item === 'Create') {
-            window.scrollTo({ top: 0, behavior: 'auto' });
-            composer.current?.focus();
-        } else if (item === 'Home') {
-            window.scrollTo({ top: 0, behavior: 'auto' });
-            setNotice('');
-        } else {
-            setNotice(`${item} will be connected in a later step.`);
-        }
-    }
-
-    const navigation = [
-        ['Home', 'home'], ['Search', 'search'], ['Connections', 'people'],
-        ['Create', 'plus'], ['Profile', 'user'],
-    ];
+    function navigate() { route('/connections'); }
 
     return (
         <div className="wc-home">
-            <aside className="wc-sidebar">
-                {/* <div className="wc-logo">windchime<span>✳</span></div> */}
-                <div className="wc-logo"><img src="./logo.svg" alt="" srcset="" /></div>
-                <span className="wc-sidebar-caption">A LITTLE CLOSER.</span>
-
-                <nav className="wc-nav" aria-label="Main navigation">
-                    {navigation.map(([label, icon]) => (
-                        <button key={label}
-                            className={label === 'Home' ? 'active' : ''}
-                            aria-current={label === 'Home' ? 'page' : undefined}
-                            onClick={() => navigate(label)}>
-                            <Icon name={icon} /><span>{label}</span>
-                            {label === 'Home' && <i aria-hidden="true" />}
-                        </button>
-                    ))}
-                </nav>
-
-                <div className="wc-sidebar-bottom">
-                    <div className="wc-sidebar-note">
-                        <span aria-hidden="true">✳</span>
-                        <p>Less noise.<br /><strong>More people.</strong></p>
-                    </div>
-                    <button className="wc-account" onClick={() => navigate('Account')}>
-                        <Avatar name={user.name} small />
-                        <span><strong>{user.name}</strong><small>@{user.username}</small></span>
-                    </button>
-                    <button
-                        type="button"
-                        className="wc-logout"
-                        onClick={onLogout}
-                        disabled={loggingOut}
-                    >
-                        {loggingOut ? 'Signing out…' : 'Sign out'}
-                    </button>
-                </div>
-            </aside>
-
             <main className="wc-feed">
                 <header className="wc-feed-header">
                     <div>
@@ -592,31 +478,9 @@ export default function Home({
                 <div className="wc-preview-label">
                     Latest conversations · newest first
                 </div>
-                {notice && <p className="wc-notice" role="status">{notice}</p>}
                 {logoutError && (
                     <p className="wc-notice" role="alert">{logoutError}</p>
                 )}
-
-                <form className="wc-composer" onSubmit={publish}>
-                    <div className="wc-composer-top">
-                        <Avatar name={user.name} tone="lime" />
-                        <textarea ref={composer}
-                            aria-label="Write a post" disabled={publishing}
-                            placeholder={`What’s on your mind, ${user.name.split(' ')[0]}?`}
-                            value={draft} onChange={event => setDraft(event.target.value)}
-                            maxLength={2000} rows={2} />
-                    </div>
-                    <div className="wc-composer-bottom">
-                        <span>A thought. A question. A small hello.</span>
-                        <button
-                            type="submit"
-                            disabled={!draft.trim() || publishing || feedLoading}
-                        >
-                            {publishing ? 'Sharing…' : 'Share'}
-                            <Icon name="arrow" size={17} />
-                        </button>
-                    </div>
-                </form>
 
                 <div className="wc-feed-heading">
                     <h2>Latest conversations</h2><span>Latest moments</span>
@@ -640,7 +504,7 @@ export default function Home({
 
             <aside className="wc-right-panel" aria-label="Your account and connections">
                 <div className="wc-profile-summary">
-                    <Avatar name={user.name} tone="lime" />
+                    <Avatar name={user.name} tone="lime" id={user.id} token={session.token} version={user.avatar_version}/>
                     <div><strong>{user.name}</strong><p>@{user.username}</p></div>
                 </div>
 
@@ -656,13 +520,7 @@ export default function Home({
                     </button>
                 </section>
 
-                <div className="wc-panel-heading">
-                    <h2>Friend requests</h2><span>Preview</span>
-                </div>
-                <div className="wc-empty-requests">
-                    <Icon name="people" size={25} />
-                    <p>New connections will appear here.</p>
-                </div>
+                <FriendRequestsPreview session={session} />
 
                 <footer className="wc-right-footer">
                     <p>A place for the little things worth sharing.</p>

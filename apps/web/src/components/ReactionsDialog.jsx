@@ -1,3 +1,4 @@
+import { Avatar } from './FeedVisuals.jsx';
 import ReactionIcon from './ReactionIcon.jsx';
 import { REACTIONS } from '../utils/reactionTypes.js';
 import { getCommentReactors, getCommentReaction } from '../api/comments.js';
@@ -68,7 +69,7 @@ export default function ReactionsDialog({ token, postId, commentId = null, onClo
             <div className="wc-reactor-list">
                 {error&&<p role="alert">{error}</p>}
                 {!error&&rows.map(row=><div className="wc-reactor-row" key={row.id}>
-                    <span className="wc-avatar small" aria-hidden="true">{row.user.name?.slice(0,2).toUpperCase()}</span>
+                    <Avatar name={row.user.name} id={row.creator_id} token={token} small/>
                     <div><strong>{row.user.name}</strong>{row.user.username&&<p>@{row.user.username}</p>}</div>
                     <span className="wc-reactor-type" title={row.type}><ReactionIcon name={row.type} size={24} colored /></span>
                 </div>)}

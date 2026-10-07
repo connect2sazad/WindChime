@@ -172,4 +172,13 @@
         grid-template-columns: 1fr;
         gap: 16px;
     }
-}
+}.availability { display:block; min-height:20px; padding-top:5px; font-size:10px; color:#73827b; }
+.availability.available { color:#467a68; }
+.availability.taken,.availability.invalid,.availability.error { color:#a95461; }
+.register-card .register-verification { display:block; }
+.register-code { font-size:26px!important; letter-spacing:12px; text-align:center; }
+.register-verification .signin-button { margin-top:20px; }
+.register-code-actions { display:flex; justify-content:space-between; gap:12px; margin-top:16px; }
+.register-code-actions button { border:0; background:transparent; min-height:40px; color:#467a68; font-size:12px; }
+.register-code-actions button:disabled { opacity:.5; }
+.register-dev-note { padding:12px; margin-bottom:16px; background:#eff4e8; border-radius:10px; font-size:11px; color:#617653; }

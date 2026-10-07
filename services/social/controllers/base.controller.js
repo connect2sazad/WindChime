@@ -123,6 +123,8 @@ class BaseController {
         return values;
     }
 
+    async afterCreate() {}
+
     async getListScope(req) {
         return this.getScope(req);
     }
@@ -283,6 +285,7 @@ class BaseController {
                 }
                 const prepared = await this.prepareCreate(req, values, transaction);
                 const record = await this.model.create(prepared, { transaction });
+                await this.afterCreate(req, record, transaction);
                 await record.reload({ include: this.includes, transaction });
                 return this.serialize(record);
             });

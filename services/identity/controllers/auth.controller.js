@@ -95,7 +95,7 @@ class AuthController {
                 );
             }
 
-            const user_data = Schemas.UserSchema.parse(user.toJSON());
+            const user_data = Schemas.UserSchema.parse({...user.toJSON(),avatar_version:user.avatar_filename||null});
 
             const tokend = Middlewares.JWTTokenization.generate({
                 id: user_data.id,
@@ -157,7 +157,7 @@ class AuthController {
                 password: hashed_password,
                 email
                 }, { transaction });
-                return Schemas.UserSchema.parse(user.toJSON());
+                return Schemas.UserSchema.parse({...user.toJSON(),avatar_version:user.avatar_filename||null});
             });
 
             return res.status(utils.HTTP_STATUS.HTTP_201_CREATED.status_code).json(
@@ -180,7 +180,7 @@ class AuthController {
     async self(req, res, next) {
         try {
 
-            const user = Schemas.UserSchema.parse(req.user.toJSON());
+            const user = Schemas.UserSchema.parse({...req.user.toJSON(),avatar_version:req.user.avatar_filename||null});
             res.set("Cache-Control", "no-store");
 
             return res.status(utils.HTTP_STATUS.HTTP_200_OK.status_code).json(
@@ -225,7 +225,7 @@ class AuthController {
                 password: hashed_password
             });
 
-            const user_data = Schemas.UserSchema.parse(user.toJSON());
+            const user_data = Schemas.UserSchema.parse({...user.toJSON(),avatar_version:user.avatar_filename||null});
 
             return res.status(utils.HTTP_STATUS.HTTP_200_OK.status_code).json(
                 utils.helpers.structurize_response(true,

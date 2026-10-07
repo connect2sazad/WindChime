@@ -43,6 +43,15 @@ import Models from "../models/registry.js";
 
 class UserController extends BaseController {
 
+    serialize(record, schema = this.schema) {
+        const data = super.serialize(record, schema);
+        if (!data) return data;
+        data.avatar_version = record.avatar_filename || null;
+        delete data.email;
+        delete data.email_verified_at;
+        return data;
+    }
+
     constructor() {
 
         const settings = {

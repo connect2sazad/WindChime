@@ -41,6 +41,9 @@ import { BaseSchema } from './base.schema.js';
 import { PasswordSchema } from './password.schema.js';
 
 export const UserSchema = BaseSchema.extend({
+    avatar_version: z.string().nullable().default(null),
+    bio: z.string().default(''),
+    email_verified_at: z.date().nullable().default(null),
 
     username: z.string()
         .openapi({

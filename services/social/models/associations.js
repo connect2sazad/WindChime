@@ -1,3 +1,4 @@
+import PostMedia from './post-media.model.js';
 /**
  * =============================================================================
  *
@@ -87,3 +88,5 @@ export {
     CommentReaction,
     PostRepost,
 };
+Post.hasMany(PostMedia,{foreignKey:'post_id',as:'media'});
+PostMedia.belongsTo(Post,{foreignKey:'post_id',as:'post'});

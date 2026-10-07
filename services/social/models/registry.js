@@ -1,3 +1,4 @@
+import PostMedia from './post-media.model.js';
 /**
  * =============================================================================
  *
@@ -44,6 +45,7 @@ import Follow from './follow.model.js';
 import PostRepost from './post-repost.model.js';
 
 const Models = {
+    PostMedia,
     Post,
     Comment,
     PostReaction,

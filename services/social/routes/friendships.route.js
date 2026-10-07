@@ -1,8 +1,14 @@
 import express from 'express';
 import Middlewares from '../middlewares/registry.js';
 import Controllers from '../controllers/registry.js';
+import Connections from '../controllers/connections.controller.js';
 
 const router = express.Router();
+router.get('/profiles/:user_id/connections',Middlewares.identityAuth,(req,res,next)=>Connections.publicList(req,res,next));
+router.get('/connections', Middlewares.identityAuth, (req,res,next)=>Connections.list(req,res,next));
+router.get('/connections/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.relationship(req,res,next));
+router.put('/follows/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.follow(req,res,next));
+router.delete('/follows/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.unfollow(req,res,next));
 
 const FRIENDSHIPS = '/friendships';
 const FRIENDSHIPS_REQUESTS = FRIENDSHIPS + '/requests';

@@ -10,6 +10,8 @@ const {default:app}=await import('../init.js');
 const {default:Models}=await import('../models/registry.js');
 const {default:sequelize}=await import('../config/sequelize.js');
 const nativeFetch=globalThis.fetch;
+const {Op}=await import('sequelize');
+const {default:ConnectionIdentity}=await import('../services/identity.service.js');
 let server, base;
 before(async()=>{
     server=app.listen(0,'127.0.0.1');
@@ -38,12 +40,44 @@ function record(extra={}){
     return {...data,reload:async()=>{},toJSON:()=>({...data}),update:async values=>{Object.assign(data,values);return {reload:async()=>{},toJSON:()=>({...data})};},destroy:async()=>{}};
 }
 test('me returns verified identity',async()=>{identity();const r=await request('/me');assert.equal(r.status,200);assert.equal(r.body.data.id,1);});
+test('profile connections reject private requests before querying records',async()=>{
+ identity();mock.method(Models.Friendship,'findAndCountAll',()=>assert.fail('Private request query'));assert.equal((await request('/profiles/2/connections?view=incoming')).status,422);
+});
+test('profile followers use the profile ID instead of the authenticated ID',async()=>{
+ identity();mock.method(ConnectionIdentity,'requireActiveUser',async id=>assert.equal(id,2));mock.method(Models.Follow,'findAndCountAll',async options=>{assert.deepEqual(options.where,{following_id:2});return {count:0,rows:[]};});assert.equal((await request('/profiles/2/connections?view=followers')).status,200);
+});
+test('profile post type filtering runs before pagination',async()=>{
+ identity();mock.method(Models.Post,'findAndCountAll',async options=>{const scope=options.where[Op.and][1];assert.equal(scope.creator_id,2);assert.equal(scope.kind,'post');assert.match(scope[Op.and].val,/pm.kind = 'image'/);return {count:0,rows:[]};});assert.equal((await request('/profiles/2/posts?type=photos')).status,200);assert.equal((await request('/profiles/2/posts?type=invalid')).status,422);
+});
+test('reshares preserve original post author and exclude inactive originals',async()=>{
+ identity();mock.method(Models.PostRepost,'findAndCountAll',async options=>{assert.equal(options.where.creator_id,2);assert.equal(options.include[0].required,true);assert.deepEqual(options.include[0].where,{status:true});return {count:1,rows:[{post:record({creator_id:3}),created_at:new Date()}]};});const result=await request('/profiles/2/reshares');assert.equal(result.status,200);assert.equal(result.body.data[0].creator_id,3);assert.equal(result.body.pagination.total,1);
+});
+test('incoming requests exclude caller requests and paginate only their pairs',async()=>{
+ identity(2);mock.method(Models.Friendship,'findAndCountAll',async options=>{assert.deepEqual(options.where[Op.or],[{user_low_id:2},{user_high_id:2}]);assert.equal(options.where.requester_id[Op.ne],2);assert.equal(options.where.status,'pending');assert.equal(options.offset,10);return {count:11,rows:[record({user_low_id:1,user_high_id:2,requester_id:1})]};});
+ const result=await request('/connections?view=incoming&page=2');assert.equal(result.status,200);assert.ok(Array.isArray(result.body.data));assert.equal(result.body.data[0].user_id,1);assert.equal(result.body.pagination.has_next_page,false);
+});
+test('following and followers use the correct direction',async()=>{
+ identity(2);mock.method(Models.Follow,'findAndCountAll',async options=>{const outgoing=Boolean(options.where.follower_id);assert.deepEqual(options.where,outgoing?{follower_id:2}:{following_id:2});return {count:1,rows:[record({follower_id:outgoing?2:3,following_id:outgoing?3:2})]};});
+ for(const view of ['following','followers']){const result=await request('/connections?view='+view);assert.equal(result.status,200);assert.equal(result.body.data[0].user_id,3);}
+});
+test('unfollow cannot remove another user follow',async()=>{
+ identity(2);mock.method(Models.Follow,'destroy',async options=>{assert.deepEqual(options.where,{follower_id:2,following_id:3});return 1;});assert.equal((await request('/follows/3','DELETE')).status,200);
+});
+test('self follow and invalid connection list are rejected',async()=>{
+ identity();mock.method(Models.Follow,'findOrCreate',()=>assert.fail('unexpected follow'));
+ assert.equal((await request('/follows/1','PUT')).status,422);assert.equal((await request('/connections?view=everything')).status,422);assert.equal((await request('/connections?page=0')).status,422);
+});
+test('follow validates active recipient and is idempotent for the authenticated pair',async()=>{
+ identity(2);mock.method(ConnectionIdentity,'requireActiveUser',async(id,authorization)=>{assert.equal(id,3);assert.equal(authorization,'Bearer test-token');});
+ mock.method(Models.Follow,'findOrCreate',async options=>{assert.deepEqual(options.where,{follower_id:2,following_id:3});return [record({follower_id:2,following_id:3}),false];});
+ assert.equal((await request('/follows/3','PUT')).status,200);
+});
 test('missing token is 401',async()=>{assert.equal((await request('/posts','POST',{content:'Hi'},false)).status,401);});
 test('revoked token remains 401',async()=>{identity(1,401);assert.equal((await request('/posts')).status,401);});
 test('Identity network failure is 503',async()=>{mock.method(globalThis,'fetch',async()=>{throw new Error('offline');});assert.equal((await request('/posts')).status,503);});
 test('invalid Identity payload fails closed',async()=>{identity('bad');assert.equal((await request('/posts')).status,503);});
 test('post creation uses authenticated creator',async()=>{
-    identity();mock.method(Models.Post,'create',async data=>{assert.deepEqual(data,{content:'Hello',creator_id:1});return {...record(),reload:async()=>{}};});
+    identity();mock.method(Models.Post,'create',async data=>{assert.deepEqual(data,{content:'Hello',kind:'post',creator_id:1});return {...record(),reload:async()=>{}};});
     const r=await request('/posts','POST',{content:' Hello '});assert.equal(r.status,201);assert.equal(r.body.data.creator_id,1);
 });
 test('client cannot supply ownership',async()=>{identity();assert.equal((await request('/posts','POST',{content:'Hello',creator_id:2})).status,422);});
@@ -304,4 +338,27 @@ test('comment reactor list filters each reaction within the URL post',async()=>{
 });
 test('comment reactor list rejects invalid type',async()=>{
     identity();assert.equal((await request('/posts/3/comments/8/reactions/people?type=other')).status,422);
+});
+
+test('media-only post creates ordered attachments and retains authenticated ownership',async()=>{
+ identity();let values;let generated=[];
+ mock.method(Models.Post,'create',async data=>{values=data;return {...record({content:'',kind:'post',media:[{id:9,kind:'image',mime_type:'image/png',size:68,sort_order:0}]}),reload:async()=>{}};});
+ mock.method(Models.PostMedia,'bulkCreate',async rows=>{generated=rows.map(row=>row.filename);assert.equal(rows[0].kind,'image');assert.equal(rows[0].post_id,3);});
+ const fixture=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=','base64');
+ const form=new FormData();form.append('content','');form.append('kind','post');form.append('media',new Blob([fixture],{type:'image/png'}),'test.png');
+ const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});
+ const body=await response.json();assert.equal(response.status,201);assert.equal(body.data.media[0].kind,'image');assert.equal(values.creator_id,1);
+ const {cleanupFiles,UPLOAD_DIR}=await import('../middlewares/upload-media.middleware.js');
+ const path=await import('node:path');
+ for(const filename of generated)await cleanupFiles([{path:path.join(UPLOAD_DIR,filename)}]);
+});
+test('reel requires exactly one video',async()=>{
+ identity();assert.equal((await request('/posts','POST',{content:'Text only',kind:'reel'})).status,422);
+});
+test('media-only empty post is rejected without attachments',async()=>{
+ identity();assert.equal((await request('/posts','POST',{content:'',kind:'post'})).status,422);
+});
+test('profile posts are scoped to the requested author',async()=>{
+ identity();mock.method(Models.Post,'findAndCountAll',async options=>{const scope=options.where[Object.getOwnPropertySymbols(options.where)[0]];assert.deepEqual(scope[1],{creator_id:2,status:true});return {count:0,rows:[]};});
+ assert.equal((await request('/profiles/2/posts')).status,200);
 });

@@ -1,8 +1,10 @@
+import uploadMedia from '../middlewares/upload-media.middleware.js';
 import express from 'express';
 import Middlewares from '../middlewares/registry.js';
 import Controllers from '../controllers/registry.js';
 
 const router = express.Router();
+router.get('/profiles/:user_id/reshares',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.reshares(req,res,next));
 
 const POSTS = '/posts';
 export const POSTS_ID = POSTS + '/:post_id';
@@ -12,7 +14,7 @@ export const POSTS_ID_REACTION_ME = POSTS_ID_REACTION + '/me';
 export const POSTS_ID_REACTION_SUMMARY = POSTS_ID_REACTION + '/summary';
 
 // create a new post
-router.post(POSTS, Middlewares.identityAuth, (req, res, next) => {
+router.post(POSTS, Middlewares.identityAuth, uploadMedia, (req, res, next) => {
     return Controllers.post_controller.create(req, res, next);
 });
 
@@ -86,5 +88,8 @@ router.get(
 
 router.get(POSTS_ID_REACTION + '/people', Middlewares.identityAuth,
     (req, res, next) => Controllers.post_reaction_controller.people(req, res, next));
+
+router.get(POSTS_ID + '/media/:media_id',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.media(req,res,next));
+router.get('/profiles/:user_id/posts',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.byAuthor(req,res,next));
 
 export default router;
