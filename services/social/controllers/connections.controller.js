@@ -4,7 +4,7 @@ import Models from '../models/registry.js';
 import utils from '../utils/registry.js';
 import errors from '../errors/registry.js';
 import Identity from '../services/identity.service.js';
-const Query=z.object({view:z.enum(['incoming','sent','friends','following','followers']).default('incoming'),page:z.coerce.number().int().min(1).default(1),limit:z.coerce.number().int().min(1).max(50).default(10)}).strict();
+const Query=z.object({view:z.enum(['incoming','sent','friends','following','followers']).default('incoming'),page:z.coerce.number().int().min(1).default(1),limit:z.coerce.number().int().min(1).max(50).default(10),search:z.string().trim().max(100).default('')}).strict();
 const Params=z.object({user_id:z.coerce.number().int().positive()});
 const respond=(res,data)=>res.json(utils.helpers.structurize_response(true,'Connections retrieved',data));
 export class ConnectionsController {
@@ -15,11 +15,14 @@ export class ConnectionsController {
   return this.list({...req,query,auth:{...req.auth,id:user_id}},res,next);
  }catch(e){next(e);}}
  async list(req,res,next){try{
-  const {view,page,limit}=utils.Validations.parseRequest(Query,req.query);const id=req.auth.id;
+  const {view,page,limit,search}=utils.Validations.parseRequest(Query,req.query);const id=req.auth.id;
   let model,where;
   if(view==='following'||view==='followers'){model=Models.Follow;where={[view==='following'?'follower_id':'following_id']:id};}
   else {model=Models.Friendship;where={[Op.or]:[{user_low_id:id},{user_high_id:id}],status:view==='friends'?'accepted':'pending',...(view==='sent'?{requester_id:id}:view==='incoming'?{requester_id:{[Op.ne]:id}}:{})};}
-  const {rows,count}=await model.findAndCountAll({where,limit,offset:(page-1)*limit,order:[['id','DESC']]});
+  const peerId=row=>model===Models.Follow?(view==='following'?row.following_id:row.follower_id):(row.user_low_id===id?row.user_high_id:row.user_low_id);
+  let rows,count;
+  if(search){const all=await model.findAll({where,order:[['id','DESC']]});const matching=await Identity.searchIds([...new Set(all.map(peerId))],search,req.headers.authorization);const filtered=all.filter(row=>matching.has(peerId(row)));count=filtered.length;rows=filtered.slice((page-1)*limit,page*limit);}
+  else({rows,count}=await model.findAndCountAll({where,limit,offset:(page-1)*limit,order:[['id','DESC']]}));
   const data=rows.map(row=>{const value=row.toJSON();return {...value,user_id:model===Models.Follow?(view==='following'?value.following_id:value.follower_id):(value.user_low_id===id?value.user_high_id:value.user_low_id)};});
   return res.json({...utils.helpers.structurize_response(true,'Connections retrieved'),data,pagination:{page,limit,total:count,total_pages:Math.ceil(count/limit),has_next_page:page*limit<count,has_previous_page:page>1}});
  }catch(e){next(e);}}

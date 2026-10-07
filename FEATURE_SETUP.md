@@ -2,7 +2,9 @@
 
 ## Direct messages
 
-The separate `services/direct_messages` service runs at localhost:3103 and uses `windchime_direct_messages`. Its schema is migrated locally. Identity and Social must be running. Open Messages in the navbar, or Message on an accepted friend's profile. Only accepted friends and conversation participants can access messages; follow/pending status is insufficient. Includes text messages, safe retries, unread counts, read receipts and paginated history. Updates use four-second polling. See `services/direct_messages/DM_SETUP.md` for startup and API details.
+The separate `services/direct_messages` service runs at localhost:3103 and uses `windchime_direct_messages`. Its schema is migrated locally. Identity and Social must be running. Open Messages in the navbar, or Message on an accepted friend's profile. Only accepted friends and conversation participants can access messages; follow/pending status is insufficient. Includes text, private photo/video attachments, original-post sharing, name/username conversation search across inbox pages, safe retries, unread counts, read receipts and paginated history. Updates use four-second polling. See `services/direct_messages/DM_SETUP.md` for startup, upload limits and API details.
+
+Chat messages now offer Reply, Forward and React in their menu. Only the sender sees Delete, which removes the message for everyone in that conversation. Replies retain a deleted-message placeholder; forwarded copies remain independent. Reactions and deletion updates refresh across participants, including older loaded messages.
 
 ## Test registration locally
 

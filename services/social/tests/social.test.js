@@ -40,6 +40,7 @@ function record(extra={}){
     return {...data,reload:async()=>{},toJSON:()=>({...data}),update:async values=>{Object.assign(data,values);return {reload:async()=>{},toJSON:()=>({...data})};},destroy:async()=>{}};
 }
 test('me returns verified identity',async()=>{identity();const r=await request('/me');assert.equal(r.status,200);assert.equal(r.body.data.id,1);});
+test('friend name search filters all accepted friendships before pagination',async()=>{identity();mock.method(Models.Friendship,'findAll',async options=>{assert.equal(options.where.status,'accepted');return Array.from({length:15},(_,index)=>record({id:index+1,user_low_id:1,user_high_id:index+2}));});mock.method(ConnectionIdentity,'searchIds',async(ids,search,authorization)=>{assert.ok(ids.includes(16));assert.equal(search,'sazad');assert.equal(authorization,'Bearer test-token');return new Set([16]);});const result=await request('/connections?view=friends&search=sazad');assert.equal(result.status,200);assert.equal(result.body.data[0].user_id,16);assert.equal(result.body.pagination.total,1);});
 test('profile connections reject private requests before querying records',async()=>{
  identity();mock.method(Models.Friendship,'findAndCountAll',()=>assert.fail('Private request query'));assert.equal((await request('/profiles/2/connections?view=incoming')).status,422);
 });

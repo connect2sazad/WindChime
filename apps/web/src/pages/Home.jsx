@@ -1,5 +1,6 @@
 import ProfileLink from '../components/ProfileLink.jsx';
 import PostOptions from '../components/PostOptions.jsx';
+import SharePostDialog from '../components/SharePostDialog.jsx';
 import { Icon, Avatar } from '../components/FeedVisuals.jsx';
 import FriendRequestsPreview from '../components/FriendRequestsPreview.jsx';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +34,7 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
     const [reactionBusy, setReactionBusy] = useState(false);
     const [reactionError, setReactionError] = useState('');
     const [expanded, setExpanded] = useState(false);
+    const [sharing, setSharing] = useState(false);
     const [reactorsOpen, setReactorsOpen] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
     const reactionControl = useRef(null);
@@ -53,10 +55,6 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
     const [commentsLoading, setCommentsLoading] = useState(false);
     const [commentsError, setCommentsError] = useState('');
     const [commentTotal, setCommentTotal] = useState(null);
-
-
-
-
 
     useEffect(() => {
         if (!pickerOpen) return;
@@ -79,7 +77,7 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
 
     const characters = Array.from(post.content || '');
     const longText = characters.length > 280;
-    const preview = longText ? characters.slice(0,280).join('').trimEnd() + '…' : post.content;
+    const preview = longText ? characters.slice(0, 280).join('').trimEnd() + '…' : post.content;
     const selectedReaction = REACTIONS.find(
         item => item.type === reaction?.type
     );
@@ -239,6 +237,7 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
             setPickerOpen(true);
         }, 450);
     }
+
     function moveHold(event) {
         const start = pointerStart.current;
         if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12) {
@@ -288,16 +287,16 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
                 <Avatar name={post.name} tone={post.tone} id={post.creator_id} token={token} />
                 <div>
                     <ProfileLink className="wc-author-link" username={post.username}><strong>{post.name}</strong></ProfileLink>
-                    <p>{post.username?`@${post.username}`:'Account unavailable'} <span>· <RelativeTime value={post.created_at} /></span></p>
+                    <p>{post.username ? `@${post.username}` : 'Account unavailable'} <span>· <RelativeTime value={post.created_at} /></span></p>
                 </div>
-                <PostOptions post={post} currentUser={currentUser} token={token} onSaved={onUpdated} onDeleted={onDeleted}/>
+                <PostOptions post={post} currentUser={currentUser} token={token} onSaved={onUpdated} onDeleted={onDeleted} onSeeAllReactions={setReactorsOpen} />
             </header>
 
             <div className="wc-post-content">
-                <span className="wc-topic">{post.kind==='reel'?'REEL':post.topic||'A SHARED MOMENT'}</span>
+                <span className="wc-topic">{post.kind === 'reel' ? 'REEL' : post.topic || 'A SHARED MOMENT'}</span>
                 <PostMediaView post={post} token={token} />
                 {post.content && <p>{preview}</p>}
-                {longText && <button type="button" className="wc-view-more" onClick={()=>setExpanded(true)}>View more</button>}
+                {longText && <button type="button" className="wc-view-more" onClick={() => setExpanded(true)}>View more</button>}
             </div>
 
             <footer className="wc-post-actions">
@@ -360,12 +359,6 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
                     )}
                 </div>
 
-                <button type="button" className="wc-reaction-details" disabled={reactionLoading || Boolean(reactionError)}
-                    aria-label="See who reacted to this post" onClick={() => setReactorsOpen(true)}>
-                    <span aria-hidden="true">{REACTIONS.filter(item => summary.counts[item.type] > 0).slice(0,3).map(item => <ReactionIcon key={item.type} name={item.icon} size={18} colored />)}</span>
-                    {summary.total} {summary.total === 1 ? 'reaction' : 'reactions'}
-                </button>
-
                 {/* reposts */}
                 <button
                     type="button"
@@ -375,23 +368,22 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
                     disabled={repostLoading || repostBusy || Boolean(repostError)}
                     onClick={toggleRepost}
                 >
-                    <Icon name="reshare" size={20} />
-                    <span>
-                        {repostLoading ? 'Loading…'
-                            : repostBusy ? 'Saving…'
-                                : `${repost.total} ${repost.total === 1 ? 'repost' : 'reposts'}`}
-                    </span>
+                    <Icon name="reshare" size={20} />{repost.total}
                 </button>
 
-                <button aria-expanded={expanded}
+                <button type="button" aria-expanded={expanded}
+                    aria-label="View comments" aria-haspopup="dialog"
+                    title={commentsError || 'View comments'}
                     onClick={() => setExpanded(value => !value)}>
-                    <Icon name="comment" size={20} />
-                    <span>
-                        {commentTotal === null
-                            ? commentsError ? 'Comments' : commentsLoading ? 'Loading…' : 'Comments'
-                            : commentTotal + (commentTotal == 1 ? ' comment' : ' comments')}
-                    </span>
+                    <Icon name="comment" size={20} /> {commentsLoading ? '…' : commentTotal ?? '—'}
                 </button>
+
+                <button type="button" aria-label="Send this post in a message"
+                    title="Send in a message" aria-haspopup="dialog" aria-expanded={sharing}
+                    onClick={() => setSharing(true)}>
+                    <Icon name="send" size={20} />
+                </button>
+
                 <span className="wc-post-signoff">a moment shared</span>
             </footer>
 
@@ -408,6 +400,7 @@ export function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
                     onClose={() => setExpanded(false)} onCountChange={setCommentTotal} reactionSummary={summary} />
             )}
             {reactorsOpen && <ReactionsDialog token={token} postId={post.id} onClose={() => setReactorsOpen(false)} />}
+            {sharing && <SharePostDialog post={post} token={token} onClose={() => setSharing(false)} />}
         </article>
     );
 }
@@ -419,8 +412,8 @@ export default function Home({
     const [posts, setPosts] = useState([]);
     const [feedLoading, setFeedLoading] = useState(true);
     const [feedError, setFeedError] = useState('');
-    const [postNotice,setPostNotice]=useState('');
-    const [feedPage,setFeedPage]=useState(1); const [feedPagination,setFeedPagination]=useState(null); const [feedRevision,setFeedRevision]=useState(0); const morePending=useRef(false);
+    const [postNotice, setPostNotice] = useState('');
+    const [feedPage, setFeedPage] = useState(1); const [feedPagination, setFeedPagination] = useState(null); const [feedRevision, setFeedRevision] = useState(0); const morePending = useRef(false);
     const route = useNavigate();
     const user = session.user;
 
@@ -434,7 +427,7 @@ export default function Home({
             try {
                 const result = await getPosts(session.token, controller.signal, feedPage);
 
-                const authors = new Map(await Promise.all([...new Set(result.data.map(post=>post.creator_id))].map(async id=>[id,id===user.id?{id:user.id,name:user.name,username:user.username}:await getDisplayUser(session.token,id,controller.signal)])));
+                const authors = new Map(await Promise.all([...new Set(result.data.map(post => post.creator_id))].map(async id => [id, id === user.id ? { id: user.id, name: user.name, username: user.username } : await getDisplayUser(session.token, id, controller.signal)])));
                 const items = result.data.map(post => {
                     const mine = post.creator_id === user.id;
 
@@ -448,7 +441,7 @@ export default function Home({
                     };
                 });
 
-                if (!controller.signal.aborted) {setPosts(previous=>feedPage===1?items:[...previous,...items.filter(item=>!previous.some(existing=>existing.id===item.id))]);setFeedPagination(result.pagination);}
+                if (!controller.signal.aborted) { setPosts(previous => feedPage === 1 ? items : [...previous, ...items.filter(item => !previous.some(existing => existing.id === item.id))]); setFeedPagination(result.pagination); }
             } catch (error) {
                 if (!controller.signal.aborted) {
                     setFeedError(
@@ -458,7 +451,7 @@ export default function Home({
                     );
                 }
             } finally {
-                if (!controller.signal.aborted){setFeedLoading(false);morePending.current=false;}
+                if (!controller.signal.aborted) { setFeedLoading(false); morePending.current = false; }
             }
         }
 
@@ -486,32 +479,32 @@ export default function Home({
                     <p className="wc-notice" role="alert">{logoutError}</p>
                 )}
 
-                {postNotice&&<p className="wc-notice" role="status">{postNotice}</p>}
+                {postNotice && <p className="wc-notice" role="status">{postNotice}</p>}
                 <div className="wc-feed-heading">
                     <h2>Latest conversations</h2><span>Latest moments</span>
                 </div>
 
                 {posts.map(post => (
-                    <PostCard key={post.id} post={post} currentUser={user} token={session.token} onUpdated={data=>{setPosts(previous=>previous.map(item=>item.id===data.id?{...item,...data}:item));setPostNotice('Post updated.');}} onDeleted={id=>{setPosts(previous=>previous.filter(item=>item.id!==id));setPostNotice('Post deleted.');}}/>
+                    <PostCard key={post.id} post={post} currentUser={user} token={session.token} onUpdated={data => { setPosts(previous => previous.map(item => item.id === data.id ? { ...item, ...data } : item)); setPostNotice('Post updated.'); }} onDeleted={id => { setPosts(previous => previous.filter(item => item.id !== id)); setPostNotice('Post deleted.'); }} />
                 ))}
 
                 {feedLoading && <p className="wc-notice" role="status">Loading conversations…</p>}
 
-                {feedError && <div className="wc-notice" role="alert"><p>{feedError}</p><button className="wc-feed-more" onClick={()=>setFeedRevision(value=>value+1)}>Try again</button></div>}
+                {feedError && <div className="wc-notice" role="alert"><p>{feedError}</p><button className="wc-feed-more" onClick={() => setFeedRevision(value => value + 1)}>Try again</button></div>}
 
                 {!feedLoading && !feedError && posts.length === 0 && (
                     <p className="wc-notice">No posts yet. A small hello is a good start.</p>
                 )}
                 {!feedLoading && !feedError && posts.length > 0 && (
-                    <p className="wc-feed-end">{feedPagination?.has_next_page?<button className="wc-feed-more" disabled={feedLoading} onClick={()=>{if(morePending.current)return;morePending.current=true;setFeedPage(value=>value+1);}}>Load more moments ↓</button>:'You’re all caught up ✳'}</p>
+                    <p className="wc-feed-end">{feedPagination?.has_next_page ? <button className="wc-feed-more" disabled={feedLoading} onClick={() => { if (morePending.current) return; morePending.current = true; setFeedPage(value => value + 1); }}>Load more moments ↓</button> : 'You’re all caught up ✳'}</p>
                 )}
             </main>
 
             <aside className="wc-right-panel" aria-label="Your account and connections">
-                <div className="wc-profile-summary">
-                    <Avatar name={user.name} tone="lime" id={user.id} token={session.token} version={user.avatar_version}/>
+                {/* <div className="wc-profile-summary">
+                    <Avatar name={user.name} tone="lime" id={user.id} token={session.token} version={user.avatar_version} />
                     <div><strong>{user.name}</strong><p>@{user.username}</p></div>
-                </div>
+                </div> */}
 
                 <section className="wc-connection-card">
                     <div className="wc-mini-chimes" aria-hidden="true">

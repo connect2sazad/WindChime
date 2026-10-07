@@ -11,6 +11,7 @@ export function Icon({ name, size = 22 }) {
         comment: <path d="M21 11.5a9 9 0 0 1-9 9 10 10 0 0 1-4-.9L3 21l1.4-5a9 9 0 1 1 16.6-4.5Z" />,
         arrow: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
         reshare: <><path d="M7 7h10a4 4 0 0 1 4 4v1" /><path d="m17 4 3 3-3 3" /><path d="M17 17H7a4 4 0 0 1-4-4v-1" /><path d="m7 20-3-3 3-3" /></>,
+        send: <path d="m22 2-7 20-4-9-9-4Z" />,
     };
 
     return (

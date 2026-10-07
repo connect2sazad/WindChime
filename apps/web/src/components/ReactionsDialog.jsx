@@ -1,3 +1,4 @@
+import { isBackdropClick } from '../utils/dialog.js';
 import { Avatar } from './FeedVisuals.jsx';
 import ReactionIcon from './ReactionIcon.jsx';
 import { REACTIONS } from '../utils/reactionTypes.js';
@@ -58,7 +59,7 @@ export default function ReactionsDialog({ token, postId, commentId = null, onClo
         finally { pending.current=false; setLoading(false); }
     }
     return createPortal(
-        <dialog ref={dialog} className="wc-reactors-dialog" aria-label="People who reacted"
+        <dialog ref={dialog} className="wc-reactors-dialog" aria-label="People who reacted" onClick={event=>{if(isBackdropClick(event))onClose();}}
             onCancel={event => {event.preventDefault();onClose();}}>
             <header className="wc-dialog-header"><h2>Reactions</h2><button type="button" aria-label="Close reactions" onClick={onClose}>×</button></header>
             <div className="wc-reactor-tabs" role="group" aria-label="Filter by reaction">
