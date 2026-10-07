@@ -52,6 +52,19 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    function expired(event) {
+      if (event.detail !== session?.token) return;
+      sessionStorage.removeItem('windchime_token');
+      setSession(null);
+      setPassword('');
+      setLogoutError('');
+      setMessage('Your session expired. Please sign in again.');
+    }
+    window.addEventListener('windchime:session-expired', expired);
+    return () => window.removeEventListener('windchime:session-expired', expired);
+  }, [session?.token]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (loading) return;

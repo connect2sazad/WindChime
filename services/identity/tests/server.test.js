@@ -199,3 +199,10 @@ test('login limiter returns consistent JSON 429 with retry headers', async () =>
     assert.equal(result.body.code, 'TOO_MANY_REQUESTS');
     assert.ok(result.body.request_id); assert.ok(result.headers.get('retry-after'));
 });
+
+test('separate logins issue distinct tokens even in the same second',async()=>{
+ const {default:JWT}=await import('../middlewares/jwt-tokenization.middleware.js');
+ const data={id:1,username:'tester',email:'test@example.com'};
+ const first=JWT.generate(data).token;const second=JWT.generate(data).token;
+ assert.notEqual(first,second);assert.notEqual(jwt.decode(first).jti,jwt.decode(second).jti);
+});

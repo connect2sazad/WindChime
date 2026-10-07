@@ -2,6 +2,7 @@ import BaseController from './base.controller.js';
 import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
 import utils from '../utils/registry.js';
+import errors from '../errors/registry.js';
 
 class CommentReactionController extends BaseController{
     
@@ -10,15 +11,32 @@ class CommentReactionController extends BaseController{
         const settings = {
             schema: Schemas.ReactionSchemas.CommentReactionSchema,
             parents: [
+                { param: 'post_id', model: Models.Post },
                 {
                     param: 'comment_id',
                     field: 'comment_id',
                     model: Models.Comment,
+                    scope: { post_id: 'post_id' },
                 }
             ],
         }
 
         super(Models.CommentReaction, settings);
+    }
+
+    async getScope(req, transaction) {
+        const scope = await super.getScope(req, transaction);
+        const comment = await Models.Comment.findByPk(scope.comment_id, { transaction });
+        if (!comment) throw new errors.NotFoundException('Comment not found');
+        if (comment.parent_id !== null) {
+            const parent = await Models.Comment.findOne({
+                where: { id: comment.parent_id, post_id: comment.post_id, parent_id: null },
+                transaction,
+                ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
+            });
+            if (!parent) throw new errors.NotFoundException('Parent comment not found');
+        }
+        return scope;
     }
 
     async set(req, res, next){

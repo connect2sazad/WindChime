@@ -104,7 +104,7 @@ class BaseController {
         const scope = {};
         for (const parent of this.parents) {
             const id = this.parseId(req.params?.[parent.param]);
-            const where = { id };
+            const where = { ...parent.where, id };
             // Optional relationship constraints for deeper nested parents.
             for (const [field, param] of Object.entries(parent.scope || {})) {
                 where[field] = this.parseId(req.params?.[param]);
@@ -114,7 +114,7 @@ class BaseController {
                 ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
             });
             if (!record) throw new errors.NotFoundException(parent.model.name + ' not found');
-            scope[parent.field] = id;
+            if (parent.field) scope[parent.field] = id;
         }
         return scope;
     }
@@ -179,7 +179,10 @@ class BaseController {
             }
 
             const { page, limit: page_size, search, status } = validation.data;
-            if (status !== undefined) where = { ...where, status };
+            if (status !== undefined) {
+                if (!this.model.rawAttributes.status) throw new errors.ValidationException('This resource does not support status filtering');
+                where = { ...where, status };
+            }
 
             // get offset/no of records to skip
             const offset = (page - 1) * page_size;

@@ -10,6 +10,8 @@ import {
     addRepost,
     undoRepost,
 } from '../api/reposts.js';
+import { getComments, createComment } from '../api/comments.js';
+import CommentItem from '../components/CommentItem.jsx';
 import './Home.css';
 
 const REACTIONS = [
@@ -59,8 +61,6 @@ function PostCard({ post, currentUser, token }) {
     const [reactionBusy, setReactionBusy] = useState(false);
     const [reactionError, setReactionError] = useState('');
     const [expanded, setExpanded] = useState(false);
-    const [draft, setDraft] = useState('');
-    const [comments, setComments] = useState(post.replies);
     const [pickerOpen, setPickerOpen] = useState(false);
     const reactionControl = useRef(null);
     const holdTimer = useRef(null);
@@ -76,6 +76,14 @@ function PostCard({ post, currentUser, token }) {
     const [repostBusy, setRepostBusy] = useState(false);
     const [repostError, setRepostError] = useState('');
     const repostPending = useRef(false);
+    const [comments, setComments] = useState([]);
+    const [commentsLoading, setCommentsLoading] = useState(false);
+    const [commentsError, setCommentsError] = useState('');
+    const [commentTotal, setCommentTotal] = useState(null);
+    const [commentDraft, setCommentDraft] = useState('');
+    const [commentSaving, setCommentSaving] = useState(false);
+    const [commentSaveError, setCommentSaveError] = useState('');
+    const commentPending = useRef(false);
 
     useEffect(() => {
         if (!pickerOpen) return;
@@ -125,14 +133,37 @@ function PostCard({ post, currentUser, token }) {
         return () => controller.abort();
     }, [token, post.id]);
 
-    function addComment(event) {
+    function commentDeleted(id) {
+        setComments(previous => previous.filter(comment => comment.id !== id));
+        setCommentTotal(previous => Math.max(0, (previous ?? 0) - 1));
+    }
+
+    async function addComment(event) {
         event.preventDefault();
-        if (!draft.trim()) return;
-        setComments(previous => [...previous, {
-            name: currentUser.name,
-            content: draft.trim(),
-        }]);
-        setDraft('');
+
+        const content = commentDraft.trim();
+        if (!content || commentPending.current || commentsLoading || commentsError) return;
+
+        commentPending.current = true;
+        setCommentSaving(true);
+        setCommentSaveError('');
+
+        try {
+            const comment = await createComment(token, post.id, content);
+
+            setComments(previous => [comment, ...previous]);
+            setCommentTotal(previous => (previous ?? 0) + 1);
+            setCommentDraft('');
+        } catch (error) {
+            setCommentSaveError(
+                error instanceof TypeError || error.name === 'TimeoutError'
+                    ? 'Could not confirm your comment. Refresh before retrying.'
+                    : error.message
+            );
+        } finally {
+            commentPending.current = false;
+            setCommentSaving(false);
+        }
     }
 
     useEffect(() => {
@@ -165,6 +196,36 @@ function PostCard({ post, currentUser, token }) {
         }
 
         loadReaction();
+        return () => controller.abort();
+    }, [token, post.id]);
+
+    useEffect(() => {
+
+        const controller = new AbortController();
+
+        async function load() {
+            setCommentsLoading(true);
+            setCommentsError('');
+
+            try {
+                const result = await getComments(
+                    token, post.id, controller.signal
+                );
+
+                if (!controller.signal.aborted) {
+                    setComments(result.data);
+                    setCommentTotal(result.pagination.total);
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    setCommentsError(error.message || 'Unable to load comments');
+                }
+            } finally {
+                if (!controller.signal.aborted) setCommentsLoading(false);
+            }
+        }
+
+        load();
         return () => controller.abort();
     }, [token, post.id]);
 
@@ -375,7 +436,11 @@ function PostCard({ post, currentUser, token }) {
                 <button aria-expanded={expanded}
                     onClick={() => setExpanded(value => !value)}>
                     <Icon name="comment" size={20} />
-                    <span>{comments.length} comments</span>
+                    <span>
+                        {commentTotal === null
+                            ? commentsError ? 'Comments' : 'Loading…'
+                            : commentTotal + (commentTotal == 1 ? ' comment' : ' comments')}
+                    </span>
                 </button>
                 <span className="wc-post-signoff">a moment shared</span>
             </footer>
@@ -390,21 +455,61 @@ function PostCard({ post, currentUser, token }) {
 
             {expanded && (
                 <section className="wc-comments" aria-label="Comments">
-                    {comments.length === 0 && <p>Start the conversation.</p>}
-                    {comments.map((comment, index) => (
-                        <div className="wc-comment" key={index}>
-                            <Avatar name={comment.name} small />
-                            <div><strong>{comment.name}</strong><p>{comment.content}</p></div>
-                        </div>
-                    ))}
+
+                    {commentSaveError && (
+                        <p className="mt-3" role="alert">{commentSaveError}</p>
+                    )}
+
                     <form className="wc-comment-form" onSubmit={addComment}>
-                        <input aria-label="Write a comment"
+                        <input
+                            aria-label="Write a comment"
                             placeholder="Add to the conversation…"
-                            value={draft} onChange={event => setDraft(event.target.value)}
-                            maxLength={2000} required />
-                        <button type="submit" disabled={!draft.trim()}
-                            aria-label="Post comment"><Icon name="arrow" size={19} /></button>
+                            value={commentDraft}
+                            onChange={event => setCommentDraft(event.target.value)}
+                            maxLength={2000}
+                            disabled={commentSaving}
+                            required
+                        />
+                        <button
+                            type="submit"
+                            disabled={
+                                !commentDraft.trim() ||
+                                commentSaving ||
+                                commentsLoading ||
+                                Boolean(commentsError)
+                            }
+                            aria-label={commentSaving ? 'Posting comment' : 'Post comment'}
+                        >
+                            {commentSaving ? '…' : <Icon name="arrow" size={19} />}
+                        </button>
                     </form>
+
+                    {commentsLoading && (
+                        <p role="status">Loading comments…</p>
+                    )}
+
+                    {commentsError && (
+                        <p role="alert">{commentsError}</p>
+                    )}
+
+                    {!commentsLoading && !commentsError && comments.length === 0 && (
+                        <p>Be the first to start a conversation.</p>
+                    )}
+
+                    {!commentsLoading && !commentsError && comments.map(comment => (
+                        <CommentItem
+                            key={comment.id}
+                            comment={comment}
+                            postId={post.id}
+                            token={token}
+                            currentUser={currentUser}
+                            onDeleted={commentDeleted}
+                        />
+                    ))}
+
+                    {!commentsLoading && !commentsError && commentTotal > comments.length && (
+                        <p>Showing the latest {comments.length} of {commentTotal} comments.</p>
+                    )}
                 </section>
             )}
         </article>
@@ -570,7 +675,7 @@ export default function Home({
                 </header>
 
                 <div className="wc-preview-label">
-                    Latest 10 posts · reactions and comments are still previews
+                    Latest conversations · newest first
                 </div>
                 {notice && <p className="wc-notice" role="status">{notice}</p>}
                 {logoutError && (
@@ -599,7 +704,7 @@ export default function Home({
                 </form>
 
                 <div className="wc-feed-heading">
-                    <h2>From your corner</h2><span>Latest moments</span>
+                    <h2>Latest conversations</h2><span>Latest moments</span>
                 </div>
 
                 {posts.map(post => (

@@ -1,29 +1,13 @@
-async function request(token, postId, method, signal) {
-    const response = await fetch(
-        `http://localhost:3102/api/v1/posts/${postId}/repost`,
-        {
-            method,
-            headers: { Authorization: `Bearer ${token}` },
-            signal,
-        }
-    );
-
-    if (response.status === 204) return null;
-
-    const body = await response.json();
-
-    if (!response.ok || body.success !== true) {
-        throw new Error(body.message || 'Unable to process repost');
-    }
-
+import { apiRequest, SOCIAL_API } from './request.js';
+export async function getRepostSummary(token, postId, signal) {
+    const body = await apiRequest(SOCIAL_API, `/posts/${postId}/repost`, { token, signal });
+    if (!Number.isInteger(body.data?.total) || typeof body.data.reposted !== 'boolean') throw new Error('Unexpected repost summary');
     return body.data;
 }
-
-export const getRepostSummary = (token, postId, signal) =>
-    request(token, postId, 'GET', signal);
-
-export const addRepost = (token, postId) =>
-    request(token, postId, 'PUT', AbortSignal.timeout(10000));
-
-export const undoRepost = (token, postId) =>
-    request(token, postId, 'DELETE', AbortSignal.timeout(10000));
+export async function addRepost(token, postId) {
+    const body = await apiRequest(SOCIAL_API, `/posts/${postId}/repost`, { token, method: 'PUT' });
+    return body.data;
+}
+export async function undoRepost(token, postId) {
+    await apiRequest(SOCIAL_API, `/posts/${postId}/repost`, { token, method: 'DELETE' });
+}

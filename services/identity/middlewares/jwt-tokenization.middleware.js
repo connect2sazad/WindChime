@@ -42,7 +42,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import config from '../config/config.js';
 import errors from '../errors/registry.js';
 import Models from '../models/registry.js';
@@ -79,7 +79,7 @@ const authenticate = async (req, res, next) => {
 
 const generate = data => ({
     token: jwt.sign({ id: data.id, username: data.username, email: data.email }, config.JWT_SECRET_KEY,
-        { algorithm: 'HS256', expiresIn: config.JWT_EXPIRES_IN }),
+        { algorithm: 'HS256', expiresIn: config.JWT_EXPIRES_IN, jwtid: randomUUID() }),
     token_type: 'Bearer',
     expires_in: config.JWT_EXPIRES_IN
 });

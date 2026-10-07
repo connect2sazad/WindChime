@@ -188,3 +188,70 @@ test('reply to a reply returns 422 without inserting', async () => {
     assert.equal(result.status, 422);
     assert.match(result.body.message, /Replies to replies are not supported/);
 });
+
+test('comment reactions reject a comment under the wrong post URL',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async options=>{assert.deepEqual(options.where,{id:8,post_id:3});return null;});
+    mock.method(Models.CommentReaction,'create',()=>assert.fail('reaction must not be inserted'));
+    assert.equal((await request('/posts/3/comments/8/reactions','PUT',{type:'like'})).status,404);
+});
+test('comment reaction validates post without assigning post_id to reaction',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async()=>record({id:8,post_id:3,parent_id:null}));
+    mock.method(Models.Comment,'findByPk',async()=>record({id:8,post_id:3,parent_id:null}));
+    mock.method(Models.CommentReaction,'findOne',async()=>null);
+    mock.method(Models.CommentReaction,'create',async values=>{
+        assert.deepEqual(values,{comment_id:8,creator_id:1,type:'love'});
+        return record({...values,id:10});
+    });
+    assert.equal((await request('/posts/3/comments/8/reactions','PUT',{type:'love'})).status,201);
+});
+test('reaction on a reply with deleted parent is rejected',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record());
+    mock.method(Models.Comment,'findOne',async options=>options.where.id===8?record({id:8,post_id:3,parent_id:6}):null);
+    mock.method(Models.Comment,'findByPk',async()=>record({id:8,post_id:3,parent_id:6}));
+    assert.equal((await request('/posts/3/comments/8/reactions','PUT',{type:'like'})).status,404);
+});
+test('reaction resource rejects unsupported status filter without SQL',async()=>{
+    identity();assert.equal((await request('/posts/3/reactions?status=true')).status,422);
+});
+test('validation-only parent does not add an undefined child field',async()=>{
+    const {default:Base}=await import('../controllers/base.controller.js');
+    const parent={name:'Parent',findOne:async()=>({})};
+    const c=new Base(Models.Comment,{parents:[{param:'post_id',model:parent},{param:'comment_id',field:'comment_id',model:parent,scope:{post_id:'post_id'}}]});
+    assert.deepEqual(await c.getScope({params:{post_id:'3',comment_id:'8'}}),{comment_id:8});
+});
+
+const {default:Controllers}=await import('../controllers/registry.js');
+const {default:Expiration}=await import('../services/friendship-expiration.service.js');
+function friendship(extra={}) {
+ const data={id:9,user_low_id:1,user_high_id:2,requester_id:1,status:'pending',requested_at:new Date(),accepted_at:null,created_at:new Date(),updated_at:new Date(),...extra};
+ return {...data,update:async values=>Object.assign(data,values),reload:async()=>{},toJSON:()=>({...data})};
+}
+async function respond(id,action,value){
+ mock.method(Models.Friendship,'findByPk',async()=>value);
+ let result,error;
+ const res={status(code){result={status:code};return this;},json(body){result.body=body;return this;}};
+ await Controllers.friendship_controller.respond_friendship_request({auth:{id},respond:action,params:{friendship_id:'9'}},res,e=>{error=e;});
+ return {result,error};
+}
+test('friendship requester cannot accept',async()=>{assert.equal((await respond(1,'accepted',friendship())).error.statusCode,403);});
+test('friendship recipient accepts pending request',async()=>{
+ const {result,error}=await respond(2,'accepted',friendship());assert.equal(error,undefined);assert.equal(result.body.data.status,'accepted');assert.ok(result.body.data.accepted_at);
+});
+test('cancellation belongs to requester',async()=>{
+ const {result,error}=await respond(1,'cancelled',friendship());assert.equal(error,undefined);assert.equal(result.body.data.status,'cancelled');
+});
+test('recipient cannot cancel request',async()=>{assert.equal((await respond(2,'cancelled',friendship())).error.statusCode,403);});
+test('overdue request cannot be accepted',async()=>{assert.equal((await respond(2,'accepted',friendship({requested_at:new Date(Date.now()-31*86400000)}))).error.statusCode,409);});
+test('expiry converts requester to follower and marks expired',async()=>{
+ const f=friendship({requested_at:new Date(Date.now()-31*86400000)});
+ mock.method(Models.Friendship,'findByPk',async()=>f);
+ mock.method(Models.Follow,'findOrCreate',async options=>{assert.deepEqual(options.where,{follower_id:1,following_id:2});return [{},true];});
+ assert.equal(await Expiration.expireOne(9),true);assert.equal(f.toJSON().status,'expired');
+});
+test('expiry skips cancelled or fresh requests',async()=>{
+ mock.method(Models.Friendship,'findByPk',async()=>friendship({status:'cancelled'}));
+ mock.method(Models.Follow,'findOrCreate',()=>assert.fail('follow created'));
+ assert.equal(await Expiration.expireOne(9),false);
+});

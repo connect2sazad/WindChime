@@ -53,6 +53,9 @@ router.get('/', (req, res) => {
     });
 });
 
+router.use(routes.health);
+
+// Keep prefixed health routes available for existing callers.
 // get all routes from registry
 Object.values(routes).forEach((route) => {
     router.use(config.API_PREFIX, route);

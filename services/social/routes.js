@@ -61,6 +61,8 @@ router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
     );
 });
 
+router.use(routes.health);
+
 // get all routes from registry
 Object.values(routes).forEach((route) => {
     router.use(config.API_PREFIX, route);
