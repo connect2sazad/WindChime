@@ -1,11 +1,12 @@
+import { fn, col } from 'sequelize';
 import BaseController from './base.controller.js';
 import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
 import utils from '../utils/registry.js';
 
-class PostReactionController extends BaseController{
-    
-    constructor(){
+class PostReactionController extends BaseController {
+
+    constructor() {
 
         const settings = {
             schema: Schemas.ReactionSchemas.PostReactionSchema,
@@ -21,8 +22,88 @@ class PostReactionController extends BaseController{
         super(Models.PostReaction, settings);
     }
 
-    async set(req, res, next){
-        try{
+    async getMine(req, res, next) {
+        try {
+
+            this.isAuthorized(req);
+
+            const { post_id } = await this.getScope(req);
+
+            const reaction = await this.model.findOne({
+                where: {
+                    post_id,
+                    creator_id: req.auth.id,
+                },
+            });
+
+            return res.status(200).json(
+                utils.helpers.structurize_response(true, 'Your reaction retrieved', {
+                    reaction: reaction ? this.serialize(reaction) : null,
+                })
+            );
+
+        } catch (e) {
+            return next(e);
+        }
+    }
+
+    async summary(req, res, next) {
+        try {
+            this.isAuthorized(req);
+
+            const { post_id } = await this.getScope(req);
+
+            const rows = await this.model.findAll({
+                attributes: [
+                    'type',
+                    [fn('COUNT', col('id')), 'count'],
+                ],
+                where: { post_id },
+                group: ['type'],
+                raw: true,
+            });
+
+            const counts = {
+                like: 0,
+                love: 0,
+                laugh: 0,
+                sad: 0,
+                angry: 0,
+            };
+
+            for (const row of rows) {
+                if (Object.hasOwn(counts, row.type)) {
+                    counts[row.type] = Number(row.count);
+                }
+            }
+
+            const mine = await this.model.findOne({
+                where: {
+                    post_id,
+                    creator_id: req.auth.id,
+                },
+            });
+
+            return res.status(200).json(
+                utils.helpers.structurize_response(
+                    true,
+                    'Reaction summary retrieved',
+                    {
+                        counts,
+                        total: Object.values(counts).reduce(
+                            (sum, count) => sum + count, 0
+                        ),
+                        my_reaction: mine ? this.serialize(mine) : null,
+                    }
+                )
+            );
+        } catch (error) {
+            return next(error);
+        }
+    }
+
+    async set(req, res, next) {
+        try {
 
             this.isAuthorized(req);
 
@@ -43,7 +124,7 @@ class PostReactionController extends BaseController{
 
                 const created = !reaction;
 
-                if(created){
+                if (created) {
                     reaction = await this.model.create({
                         ...where,
                         type
@@ -73,7 +154,7 @@ class PostReactionController extends BaseController{
         }
     }
 
-    async remove(req, res, next){
+    async remove(req, res, next) {
         try {
 
             this.isAuthorized(req);

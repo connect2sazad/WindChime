@@ -38,6 +38,7 @@ import Post from "./post.model.js";
 import Comment from "./comment.model.js";
 import PostReaction from "./post-reaction.model.js";
 import CommentReaction from "./comment-reaction.model.js";
+import PostRepost from "./post-repost.model.js";
 
 Comment.belongsTo(Post, {
     foreignKey: 'post_id',
@@ -69,9 +70,20 @@ Comment.hasMany(CommentReaction, {
     as: 'reactions'
 });
 
+PostRepost.belongsTo(Post, {
+    foreignKey: 'post_id',
+    as: 'post'
+});
+
+Post.hasMany(PostRepost, {
+    foreignKey: 'post_id',
+    as: 'reposts'
+});
+
 export {
     Post,
     Comment,
     PostReaction,
     CommentReaction,
+    PostRepost,
 };

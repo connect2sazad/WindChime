@@ -41,6 +41,7 @@ import Comment from './comment.model.js';
 import CommentReaction from './comment-reaction.model.js';
 import Friendship from './friendship.model.js';
 import Follow from './follow.model.js';
+import PostRepost from './post-repost.model.js';
 
 const Models = {
     Post,
@@ -49,6 +50,7 @@ const Models = {
     CommentReaction,
     Friendship,
     Follow,
+    PostRepost,
 };
 
 export default Models;

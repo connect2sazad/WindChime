@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 590 112" role="img" aria-labelledby="title desc">
+  <title id="title">WindChime</title>
+  <desc id="desc">Three hanging chimes with a leaf-shaped wind catcher, beside the WindChime wordmark.</desc>
+  <rect x="8" y="8" width="96" height="96" rx="25.5" fill="#183b44"/>
+  <g transform="translate(8 8) scale(1.5)">
+    <path d="M15 18Q32 9 49 18" fill="none" stroke="#d7efb5" stroke-width="4" stroke-linecap="round"/>
+    <path d="M20 22v14M32 19v24M44 22v10" fill="none" stroke="#d7efb5" stroke-width="6" stroke-linecap="round"/>
+    <path d="M32 47v4" stroke="#d7efb5" stroke-width="2" stroke-linecap="round"/>
+    <path d="M25 53q7-7 14 0-7 8-14 0" fill="#d7efb5"/>
+  </g>
+  <text x="128" y="76" fill="#183b44" font-family="Segoe UI,Arial,sans-serif" font-size="66" font-weight="700" letter-spacing="-2.5">windchime</text>
+</svg>
