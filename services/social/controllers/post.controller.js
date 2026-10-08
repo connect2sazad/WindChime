@@ -31,10 +31,10 @@ class PostController extends BaseController {
  async media(req,res,next){try{
   const post_id=this.parseId(req.params.post_id);const id=this.parseId(req.params.media_id);
   const post=await Models.Post.findByPk(post_id);if(!post||!post.status)throw new errors.NotFoundException('Post not found');
-  const media=await Models.PostMedia.findOne({where:{id,post_id}});if(!media||path.basename(media.filename)!==media.filename)throw new errors.NotFoundException('Media not found');
-  res.set({'Content-Type':media.mime_type,'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store'});
+  const media=await Models.PostMedia.findOne({where:{id,post_id}});if(!media||typeof media.filename!=='string'||path.basename(media.filename)!==media.filename||!/^[a-f0-9-]+\.(png|jpg|webp|mp4|webm)$/.test(media.filename)||!['image/png','image/jpeg','image/webp','video/mp4','video/webm'].includes(media.mime_type))throw new errors.NotFoundException('Media not found');
+  res.set({'Content-Type':media.mime_type,'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store','Content-Disposition':'inline','Cross-Origin-Resource-Policy':'same-origin'});
   res.vary('Authorization');
-  return res.sendFile(path.join(UPLOAD_DIR,media.filename),error=>{if(error){if(error.code==='ENOENT')return next(new errors.NotFoundException('Media file not found'));next(error);}});
+  return res.sendFile(path.join(UPLOAD_DIR,media.filename),{dotfiles:'deny',cacheControl:false,lastModified:false},error=>{if(error&&(req.aborted||res.destroyed||error.code==='ECONNABORTED'))return;if(error){if(error.code==='ENOENT')return next(new errors.NotFoundException('Media file not found'));next(error);}});
  }catch(e){next(e);}}
  async byAuthor(req,res,next){try{
   const creator_id=utils.Validations.parseRequest(Schemas.Base.ParamsIdSchema,{id:req.params.user_id}).id;

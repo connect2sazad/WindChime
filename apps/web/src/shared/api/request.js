@@ -6,6 +6,7 @@ export async function apiRequest(base, path, { token, method = 'GET', body, sign
     const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
     const response = await fetch(base.replace(/\/$/, '') + path, {
         method,
+        ...(responseType === 'blob' ? { cache: 'no-store', redirect: 'error' } : {}),
         headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}),

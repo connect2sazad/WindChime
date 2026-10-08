@@ -365,3 +365,17 @@ test('profile posts are scoped to the requested author',async()=>{
  identity();mock.method(Models.Post,'findAndCountAll',async options=>{const scope=options.where[Object.getOwnPropertySymbols(options.where)[0]];assert.deepEqual(scope[1],{creator_id:2,status:true});return {count:0,rows:[]};});
  assert.equal((await request('/profiles/2/posts')).status,200);
 });
+
+test('media denies missing authentication, inactive posts and unsafe storage metadata',async()=>{
+ assert.equal((await request('/posts/3/media/4','GET',undefined,false)).status,401);identity();
+ mock.method(Models.Post,'findByPk',async()=>record({status:false}));mock.method(Models.PostMedia,'findOne',()=>assert.fail('Inactive post exposed media'));assert.equal((await request('/posts/3/media/4')).status,404);
+ mock.restoreAll();identity();mock.method(Models.Post,'findByPk',async()=>record());
+ for(const media of [{filename:'../private.mp4',mime_type:'video/mp4'},{filename:'safe.mp4',mime_type:'text/html'},{filename:null,mime_type:'video/mp4'}]){mock.method(Models.PostMedia,'findOne',async options=>{assert.deepEqual(options.where,{id:4,post_id:3});return media;});assert.equal((await request('/posts/3/media/4')).status,404);}
+});
+test('media sets private headers and treats cancelled transfers as normal',async()=>{
+ const {default:PostController}=await import('../controllers/post.controller.js');const controller=new PostController();
+ mock.method(Models.Post,'findByPk',async()=>record());mock.method(Models.PostMedia,'findOne',async()=>({filename:'aabb-ccdd.mp4',mime_type:'video/mp4'}));
+ const headers={};const res={set:value=>Object.assign(headers,value),vary:value=>assert.equal(value,'Authorization'),sendFile:(file,options,callback)=>{assert.ok(file.endsWith('aabb-ccdd.mp4'));assert.deepEqual(options,{dotfiles:'deny',cacheControl:false,lastModified:false});callback({code:'ECONNABORTED'});}};
+ await controller.media({params:{post_id:3,media_id:4}},res,()=>assert.fail('Aborted playback became an error'));
+ assert.equal(headers['Content-Type'],'video/mp4');assert.equal(headers['Cache-Control'],'private, no-store');assert.equal(headers['Content-Disposition'],'inline');assert.equal(headers['X-Content-Type-Options'],'nosniff');
+});

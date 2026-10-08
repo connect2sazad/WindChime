@@ -1,3 +1,4 @@
+import VideoPlayer from '../../../shared/components/VideoPlayer.jsx';
 import { useEffect,useRef,useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/index.js';
@@ -27,7 +28,7 @@ export default function CreatePost({session}){
    <form onSubmit={publish}><label htmlFor="post-caption">{mode==='text'?'Your post':'Caption (optional)'}</label><textarea id="post-caption" value={content} onChange={e=>setContent(e.target.value)} placeholder={`What’s on your mind, ${session.user.name.split(' ')[0]}?`} maxLength={2000} rows={6} disabled={busy}/><small>{content.length}/2000</small>
     {mode!=='text'&&<><input ref={chooser} id="post-media" type="file" multiple={mode==='images'} accept={mode==='images'?'image/jpeg,image/png,image/webp':'video/mp4,video/webm'} onChange={e=>choose(e.target.files)} disabled={busy} className="wc-file-input"/>
      <div className="wc-dropzone" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(!busy)choose(e.dataTransfer.files);}}><strong>{mode==='images'?'Bring your moment to life.':mode==='reel'?'One video. Your story.':'Share something in motion.'}</strong><p>{mode==='images'?'Up to 5 images · 10 MB each':'One MP4 or WebM video · up to 50 MB'}</p><button type="button" disabled={busy} onClick={()=>chooser.current.click()}>Choose {mode==='images'?'photos':'video'}</button></div>
-     <div className={`wc-create-previews ${mode==='reel'?'reel':''}`}>{files.map(item=><div className="wc-create-preview" key={item.id}>{mode==='images'?<img src={item.preview} alt={item.file.name}/>:<video src={item.preview} controls playsInline/>}<button type="button" aria-label={`Remove ${item.file.name}`} disabled={busy} onClick={()=>remove(item.id)}>×</button></div>)}</div>
+     <div className={`wc-create-previews ${mode==='reel'?'reel':''}`}>{files.map(item=><div className="wc-create-preview" key={item.id}>{mode==='images'?<img src={item.preview} alt={item.file.name}/>:<VideoPlayer src={item.preview} reel={mode==='reel'} label="Video preview" watermark={false}/>}<button type="button" aria-label={`Remove ${item.file.name}`} disabled={busy} onClick={()=>remove(item.id)}>×</button></div>)}</div>
     </>}
     {error&&<p className="wc-create-error" role="alert">{error}</p>}
     <button className="wc-create-publish" disabled={busy||(!content.trim()&&!files.length)||(mode!=='text'&&!files.length)}>{busy?'Publishing…':mode==='reel'?'Publish Reel':'Publish post'}</button>

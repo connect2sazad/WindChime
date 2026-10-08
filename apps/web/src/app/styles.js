@@ -8,3 +8,5 @@ import '../modules/posts/styles/PostOptions.css';
 import '../modules/profiles/styles/Profile.css';
 import '../modules/posts/styles/CreatePost.css';
 import '../modules/identity/styles/Register.css';
+
+import '../shared/styles/video-player.css';

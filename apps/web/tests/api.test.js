@@ -133,3 +133,5 @@ test('uploads preserve FormData without manually setting Content-Type',async()=>
 });
 
 test('personalized feed sends page and selected mode',async()=>{mock.method(globalThis,'fetch',async url=>{assert.equal(url,SOCIAL_API+'/feed?page=2&limit=10&mode=network');return new Response(JSON.stringify({success:true,data:[]}));});await getPersonalizedFeed('test',undefined,2,'network');});
+
+test('protected media bypasses cache and rejects redirects',async()=>{mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(options.headers.Authorization,'Bearer test');assert.equal(options.cache,'no-store');assert.equal(options.redirect,'error');return new Response(new Blob(['video'],{type:'video/mp4'}));});const blob=await apiRequest(SOCIAL_API,'/posts/3/media/4',{token:'test',responseType:'blob'});assert.equal(blob.type,'video/mp4');});
