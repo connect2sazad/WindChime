@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatRelativeTime } from '../src/utils/formatRelativeTime.js';
+import { formatRelativeTime } from '../src/shared/utils/formatRelativeTime.js';
 const now = Date.parse('2026-10-07T12:00:00Z');
 test('relative time uses compact units and floors elapsed values', () => {
     for (const [seconds, expected] of [

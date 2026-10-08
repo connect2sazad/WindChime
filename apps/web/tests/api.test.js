@@ -1,13 +1,13 @@
 import { test, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { apiRequest, SOCIAL_API } from '../src/api/request.js';
-import { getComments } from '../src/api/comments.js';
-import { updatePost,deletePost } from '../src/api/posts.js';
-import { getPosts } from '../src/api/posts.js';
-import { getProfileByUsername } from '../src/api/users.js';
-import { listConnections } from '../src/api/connections.js';
-import { isBackdropClick } from '../src/utils/dialog.js';
-import { sendMessage,getMessages,startConversation,getConversations,forwardMessage,deleteMessage,reactToMessage } from '../src/api/messages.js';
+import { apiRequest, SOCIAL_API } from '../src/shared/api/request.js';
+import { getComments } from '../src/modules/comments/api/index.js';
+import { updatePost,deletePost } from '../src/modules/posts/api/index.js';
+import { getPosts,getPersonalizedFeed } from '../src/modules/posts/api/index.js';
+import { getProfileByUsername } from '../src/modules/profiles/api/index.js';
+import { listConnections } from '../src/modules/connections/api/index.js';
+import { isBackdropClick } from '../src/shared/utils/dialog.js';
+import { sendMessage,getMessages,startConversation,getConversations,forwardMessage,deleteMessage,reactToMessage } from '../src/modules/messages/api/index.js';
 afterEach(()=>mock.restoreAll());
 test('friend search is encoded and sent with the connection list',async()=>{mock.method(globalThis,'fetch',async url=>{assert.ok(String(url).endsWith('/connections?view=friends&page=1&search=Sazad%20Ahemad'));return new Response(JSON.stringify({success:true,data:[]}));});await listConnections('test','friends',1,undefined,'Sazad Ahemad');});
 test('backdrop detection ignores clicks inside dialog padding and child controls',()=>{const dialog={getBoundingClientRect:()=>({left:100,right:300,top:100,bottom:300})};assert.equal(isBackdropClick({target:dialog,currentTarget:dialog,clientX:50,clientY:200}),true);assert.equal(isBackdropClick({target:dialog,currentTarget:dialog,clientX:150,clientY:200}),false);assert.equal(isBackdropClick({target:{},currentTarget:dialog,clientX:50,clientY:200}),false);});
@@ -77,7 +77,7 @@ test('authenticated 401 notifies the app without exposing token in errors',async
 });
 
 test('reactor API passes type and page filters',async()=>{
- const {getReactors}=await import('../src/api/reactions.js');
+ const {getReactors}=await import('../src/modules/reactions/api/index.js');
  mock.method(globalThis,'fetch',async url=>{
   assert.match(url,/type=love/);assert.match(url,/page=2/);
   return new Response(JSON.stringify({success:true,data:[{id:4,creator_id:2,type:'love'}],pagination:{total:1,has_next_page:false}}));
@@ -85,13 +85,13 @@ test('reactor API passes type and page filters',async()=>{
  assert.equal((await getReactors('test',3,'love',2)).data[0].type,'love');
 });
 test('display-user lookup excludes private fields from its result',async()=>{
- const {getDisplayUser}=await import('../src/api/users.js');
+ const {getDisplayUser}=await import('../src/modules/profiles/api/index.js');
  mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({success:true,data:{id:2,name:'Tester',username:'tester',email:'private@example.com',status:true}})));
  assert.deepEqual(await getDisplayUser('test',2),{id:2,name:'Tester',username:'tester'});
 });
 
 test('comment reaction API sends the chosen type rather than always like',async()=>{
- const {reactToComment}=await import('../src/api/comments.js');
+ const {reactToComment}=await import('../src/modules/comments/api/index.js');
  mock.method(globalThis,'fetch',async(url,options)=>{
   assert.match(url,/posts\/3\/comments\/8\/reactions$/);assert.equal(options.method,'PUT');
   assert.deepEqual(JSON.parse(options.body),{type:'love'});
@@ -100,7 +100,7 @@ test('comment reaction API sends the chosen type rather than always like',async(
  await reactToComment('test',3,8,false,'love');
 });
 test('comment reaction removal sends DELETE without a body',async()=>{
- const {reactToComment}=await import('../src/api/comments.js');
+ const {reactToComment}=await import('../src/modules/comments/api/index.js');
  mock.method(globalThis,'fetch',async(url,options)=>{
   assert.equal(options.method,'DELETE');assert.equal(options.body,undefined);
   return new Response(null,{status:204});
@@ -108,7 +108,7 @@ test('comment reaction removal sends DELETE without a body',async()=>{
  await reactToComment('test',3,8,true);
 });
 test('comment reactor API includes reaction segregation',async()=>{
- const {getCommentReactors}=await import('../src/api/comments.js');
+ const {getCommentReactors}=await import('../src/modules/comments/api/index.js');
  mock.method(globalThis,'fetch',async url=>{
   assert.match(url,/comments\/8\/reactions\/people/);assert.match(url,/type=laugh/);
   return new Response(JSON.stringify({success:true,data:[],pagination:{total:0,has_next_page:false}}));
@@ -117,12 +117,12 @@ test('comment reactor API includes reaction segregation',async()=>{
 });
 
 test('registration starts verification without logging in',async()=>{
- const {register}=await import('../src/api/auth.js');let calls=0;
+ const {register}=await import('../src/modules/identity/api/index.js');let calls=0;
  mock.method(globalThis,'fetch',async(url,options)=>{calls++;assert.match(url,/auth\/register$/);assert.equal(JSON.parse(options.body).username,'newmember');return new Response(JSON.stringify({success:true,data:{verification_id:'test-verification-id',email:'new@example.com'}}),{status:202});});
  const result=await register('New Member','newmember','new@example.com','Secret@123','Secret@123');assert.equal(result.verification_id,'test-verification-id');assert.equal(calls,1);
 });
 test('verification returns a session after a correct code',async()=>{
- const {verifyRegistration}=await import('../src/api/auth.js');
+ const {verifyRegistration}=await import('../src/modules/identity/api/index.js');
  mock.method(globalThis,'fetch',async(url,options)=>{assert.match(url,/register\/verify$/);assert.deepEqual(JSON.parse(options.body),{verification_id:'test-id',code:'123456'});return new Response(JSON.stringify({success:true,data:{id:2,name:'New Member',token:{token:'test-token'}}}));});
  const result=await verifyRegistration('test-id','123456');assert.equal(result.token,'test-token');assert.equal(result.user.id,2);
 });
@@ -131,3 +131,5 @@ test('uploads preserve FormData without manually setting Content-Type',async()=>
  mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(options.body,form);assert.equal(options.headers['Content-Type'],undefined);return new Response(JSON.stringify({success:true,data:{id:1}}));});
  await apiRequest(SOCIAL_API,'/posts',{token:'test',method:'POST',body:form});
 });
+
+test('personalized feed sends page and selected mode',async()=>{mock.method(globalThis,'fetch',async url=>{assert.equal(url,SOCIAL_API+'/feed?page=2&limit=10&mode=network');return new Response(JSON.stringify({success:true,data:[]}));});await getPersonalizedFeed('test',undefined,2,'network');});

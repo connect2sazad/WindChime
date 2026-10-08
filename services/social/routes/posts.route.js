@@ -4,6 +4,7 @@ import Middlewares from '../middlewares/registry.js';
 import Controllers from '../controllers/registry.js';
 
 const router = express.Router();
+router.get('/feed',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.feed(req,res,next));
 router.get('/profiles/:user_id/reshares',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.reshares(req,res,next));
 
 const POSTS = '/posts';

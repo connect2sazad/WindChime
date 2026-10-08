@@ -10,6 +10,13 @@ import { UPLOAD_DIR,cleanupFiles } from '../middlewares/upload-media.middleware.
 class PostController extends BaseController {
  constructor(){super(Models.Post,{schema:Schemas.Post.PostSchema,createSchema:Schemas.Post.PostCreateSchema,updateSchema:Schemas.Post.PostUpdateSchema,
   creator:true,ownerOnly:true,includes:[{model:Models.PostMedia,as:'media'}],searchFields:['content'],idParam:'post_id'});}
+ async feed(req,res,next){try{
+  const mode=req.query.mode||'network';if(!['network','discover'].includes(mode))throw new errors.ValidationException('Invalid feed mode');
+  if(req.query.status&&req.query.status!=='true')throw new errors.ValidationException('Only active posts are available');
+  const viewer=this.parseId(req.auth.id);const scope={status:true};
+  if(mode==='network')scope[Op.and]=literal(`(Post.creator_id = ${viewer} OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${viewer} AND f.following_id = Post.creator_id) OR EXISTS (SELECT 1 FROM friendships fr WHERE fr.status = 'accepted' AND ((fr.user_low_id = ${viewer} AND fr.user_high_id = Post.creator_id) OR (fr.user_high_id = ${viewer} AND fr.user_low_id = Post.creator_id))))`);
+  return super.getAllPaginatedRecords(req,res,next,scope);
+ }catch(e){next(e);}}
  async prepareCreate(req,values){
   const files=req.files||[];
   if(!values.content&&!files.length)throw new errors.ValidationException('Write something or add media');
