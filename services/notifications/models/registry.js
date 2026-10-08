@@ -38,10 +38,12 @@ import './associations.js';
 
 import User from "./user.model.js";
 import TokenBlacklist from "./blacklist-token.model.js";
+import Notification from './notification.model.js';
 
 const Models = {
     User,
-    TokenBlacklist
+    TokenBlacklist,
+    Notification,
 };
 
 export default Models;

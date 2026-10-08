@@ -33,11 +33,7 @@
  */
 
 import health from "./health.route.js";
-import users from "./users.route.js";
-import auth from "./auth.route.js";
 
 export default {
     health,
-    users,
-    auth,
 };

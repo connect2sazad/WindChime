@@ -10,3 +10,5 @@ import '../modules/posts/styles/CreatePost.css';
 import '../modules/identity/styles/Register.css';
 
 import '../shared/styles/video-player.css';
+
+import '../modules/notifications/styles/Notifications.css';

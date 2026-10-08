@@ -1,0 +1,6 @@
+import {z} from 'zod';
+const id=z.number().int().positive().max(2147483647);
+export const Event=z.object({event_id:z.string().uuid(),recipient_id:id,actor_id:id,type:z.enum(['friend.request','friend.accepted','follow.created','post.comment','comment.reply','post.reaction','comment.reaction','post.reshare','message.created','message.reaction']),target_type:z.enum(['friendship','profile','post','comment','conversation']),target_id:id,context:z.object({post_id:id.optional(),comment_id:id.optional(),message_id:id.optional(),reaction:z.enum(['like','love','laugh','sad','angry']).optional()}).strict().nullable().default(null),occurred_at:z.iso.datetime({offset:true})}).strict();
+export const List=z.object({page:z.coerce.number().int().min(1).max(100000).default(1),limit:z.coerce.number().int().min(1).max(50).default(20),unread:z.enum(['true','false']).optional()}).strict();
+export const Id=z.coerce.number().int().positive().max(2147483647);export const ReadAll=z.object({through_id:id}).strict();
+export const targetFor={'friend.request':'friendship','friend.accepted':'friendship','follow.created':'profile','post.comment':'post','comment.reply':'comment','post.reaction':'post','comment.reaction':'comment','post.reshare':'post','message.created':'conversation','message.reaction':'conversation'};

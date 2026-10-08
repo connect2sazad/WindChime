@@ -34,8 +34,10 @@
 import chalk from 'chalk';
 import config, { validateConfig } from './config/config.js';
 import taskapp from './init.js';
+import {startWorker} from './services/notification-outbox.service.js';
 
 validateConfig();
+const stopNotifications=startWorker();
 const server = taskapp.listen(config.PORT, () => {
     console.log(chalk.blue(`${config.PROJECT_TITLE} Server is running at http://localhost:${config.PORT}`));
 });
@@ -45,4 +47,5 @@ server.on('error', error => {
     process.exitCode = 1;
 });
 
+server.on('close',stopNotifications);
 export default server;

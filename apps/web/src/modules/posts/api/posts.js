@@ -23,3 +23,5 @@ export async function getMediaBlob(token,postId,mediaId,signal){
 }
 
 export async function getPersonalizedFeed(token,signal,page=1,mode='network'){const result=await apiRequest(SOCIAL_API,`/feed?page=${page}&limit=10&mode=${mode}`,{token,signal});if(!Array.isArray(result.data))throw new Error('Unexpected feed response');return result;}
+
+export async function getPost(token,id,signal){const result=await apiRequest(SOCIAL_API,`/posts/${id}`,{token,signal});if(result.data?.id!==id)throw new Error('Unexpected post response');if(result.data.status!==true){const error=new Error('This post is no longer available.');error.status=404;throw error;}return result.data;}

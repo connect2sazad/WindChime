@@ -37,6 +37,7 @@ import ErrorHandler from './errors.middleware.js';
 import ReqIdPolicy from './reqid.middleware.js';
 import JWTTokenization from './jwt-tokenization.middleware.js';
 import LoginLimiter from './rate-limit.middleware.js';
+import identityAuth from './identity-auth.middleware.js';
 
 const Middlewares = {
     ErrorHandler,
@@ -44,6 +45,7 @@ const Middlewares = {
     ReqIdPolicy,
     JWTTokenization,
     LoginLimiter,
+    identityAuth
 };
 
 export default Middlewares;

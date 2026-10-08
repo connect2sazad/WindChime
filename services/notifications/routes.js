@@ -33,12 +33,14 @@
  */
 
 import express from 'express';
+import notificationRoutes from './routes/notifications.route.js';
 
 import utils from './utils/registry.js';
 import config from './config/config.js';
 
 // routes
 import routes from './routes/registry.js';
+import Middlewares from './middlewares/registry.js';
 
 const router = express.Router();
 
@@ -54,10 +56,13 @@ router.get('/', (req, res) => {
 });
 
 router.use(routes.health);
+router.use(config.API_PREFIX, routes.health);
 
-// other api
-router.use(config.API_PREFIX, routes.auth);
-router.use(config.API_PREFIX, routes.users);
+router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    return res.json({ success: true, message: 'Identity verified', data: req.auth });
+});
 
 
+router.use(config.API_PREFIX, notificationRoutes);
 export default router;
