@@ -1,6 +1,13 @@
-export const IDENTITY_API = import.meta.env?.VITE_IDENTITY_API_URL || 'http://localhost:3101/api/v1';
-export const SOCIAL_API = import.meta.env?.VITE_SOCIAL_API_URL || 'http://localhost:3102/api/v1';
+function requiredApiUrl(name, value) {
+    const url = value?.trim();
+    if (!url) throw new Error(`Missing required frontend environment variable: ${name}`);
+    return url.replace(/\/+$/, '');
+}
 
+export const IDENTITY_API = requiredApiUrl('VITE_IDENTITY_API_URL', import.meta.env.VITE_IDENTITY_API_URL);
+export const SOCIAL_API = requiredApiUrl('VITE_SOCIAL_API_URL', import.meta.env.VITE_SOCIAL_API_URL);
+export const MESSAGES_API = requiredApiUrl('VITE_MESSAGES_API_URL', import.meta.env.VITE_MESSAGES_API_URL);
+export const NOTIFICATIONS_API = requiredApiUrl('VITE_NOTIFICATIONS_API_URL', import.meta.env.VITE_NOTIFICATIONS_API_URL);
 export async function apiRequest(base, path, { token, method = 'GET', body, signal, timeoutMs = 10000, responseType = 'json' } = {}) {
     const timeout = AbortSignal.timeout(timeoutMs);
     const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
