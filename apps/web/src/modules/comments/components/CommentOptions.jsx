@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
-export default function CommentOptions({ onDelete, onViewReactions, disabled, isReply }) {
+export default function CommentOptions({ onDelete, onViewReactions, onReport, disabled, isReply }) {
     const id = useId();
     const trigger = useRef(null);
     const popup = useRef(null);
@@ -58,7 +58,7 @@ export default function CommentOptions({ onDelete, onViewReactions, disabled, is
                 ) : (
                     <>
                         <button role="menuitem" type="button" onClick={() => { close(); onViewReactions(); }}>View reactions</button>
-                        {onDelete && <button role="menuitem" type="button" className="danger" onClick={() => setConfirm(true)}>Delete</button>}
+                        {onReport&&<button role="menuitem" type="button" onClick={()=>{close();onReport();}}>Report</button>}{onDelete && <button role="menuitem" type="button" className="danger" onClick={() => setConfirm(true)}>Delete</button>}
                     </>
                 )}
             </div>

@@ -1,4 +1,4 @@
-import { fn, col } from 'sequelize';
+import { fn, col, Op } from 'sequelize';
 import BaseController from './base.controller.js';
 import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
@@ -33,7 +33,7 @@ class PostReactionController extends BaseController {
             if (!Number.isSafeInteger(offset)) throw new errors.ValidationException('Page number is too large');
             const { post_id } = await this.getScope(req);
             const { count, rows } = await this.model.findAndCountAll({
-                where: { post_id, ...(type ? { type } : {}) },
+                where: { post_id, ...(type ? { type } : {}), ...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{}) },
                 attributes: ['id', 'creator_id', 'type', 'created_at'],
                 order: [['id', 'DESC']], limit, offset,
             });
@@ -78,7 +78,7 @@ class PostReactionController extends BaseController {
                     'type',
                     [fn('COUNT', col('id')), 'count'],
                 ],
-                where: { post_id },
+                where: { post_id, ...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{}) },
                 group: ['type'],
                 raw: true,
             });

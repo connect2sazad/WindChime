@@ -1,0 +1,3 @@
+import errors from '../errors/registry.js';
+async function actors(req){let response,body;try{response=await fetch(new URL('/api/v1/blocks/ids',process.env.SOCIAL_URL||'http://localhost:3102'),{headers:{Authorization:req.headers.authorization},signal:AbortSignal.timeout(3000),redirect:'error'});if(response.ok)body=await response.json();}catch{throw new errors.ServiceUnavailableException('Notification safety checks unavailable');}if(response.status===401)throw new errors.UnauthorizedException();if(!response.ok||body?.success!==true||!Array.isArray(body.data?.ids)||body.data.ids.some(value=>!Number.isSafeInteger(value)||value<1))throw new errors.ServiceUnavailableException('Notification safety checks unavailable');return body.data.ids;}
+export default {actors};

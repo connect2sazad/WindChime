@@ -9,7 +9,7 @@ export async function getPosts(token, signal, page=1) {
 export async function createPost(token, content, {kind='post',files=[]}={}) {
     let payload={content,kind};
     if(files.length){payload=new FormData();payload.append('content',content);payload.append('kind',kind);for(const file of files)payload.append('media',file);}
-    const body=await apiRequest(SOCIAL_API,'/posts',{token,method:'POST',body:payload,timeoutMs:120000});
+    const body=await apiRequest(SOCIAL_API,'/posts',{token,method:'POST',body:payload,timeoutMs:600000});
     if (!Number.isInteger(body.data?.id)) throw new Error('Unexpected post response');
     return body.data;
 }

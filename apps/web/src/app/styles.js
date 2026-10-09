@@ -12,3 +12,7 @@ import '../modules/identity/styles/Register.css';
 import '../shared/styles/video-player.css';
 
 import '../modules/notifications/styles/Notifications.css';
+
+import '../modules/posts/styles/PhotoCarousel.css';
+
+import '../modules/safety/styles/Safety.css';

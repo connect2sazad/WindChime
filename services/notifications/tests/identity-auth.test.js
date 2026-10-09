@@ -1,10 +1,12 @@
-import {test,before,after,afterEach,mock} from 'node:test';
+import {test,before,after,beforeEach,afterEach,mock} from 'node:test';
 import assert from 'node:assert/strict';
 Object.assign(process.env,{PROJECT_NAME:'notifications-test',PROJECT_TITLE:'Notifications Test',PORT:'3104',ENVIRONMENT:'test',API_PREFIX:'/api/v1',API_VERSION:'1',LOGIN_LIMIT:'10',IDENTITY_URL:'http://identity.test',DB_DIALECT:'mysql',DB_HOST:'127.0.0.1',DB_PORT:'3306',DB_NAME:'unused',DB_USER:'unused',DB_PASSWORD:'',DB_LOGGING:'false',ALLOWED_ORIGINS:'http://allowed.test'});
 const {default:app}=await import('../init.js');
 const {default:sequelize}=await import('../config/sequelize.js');
 const nativeFetch=globalThis.fetch;let server,base;
 before(async()=>{server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));base='http://127.0.0.1:'+server.address().port;});
+const {default:Safety}=await import('../services/safety.service.js');
+beforeEach(()=>mock.method(Safety,'actors',async()=>[]));
 afterEach(()=>mock.restoreAll());
 after(async()=>{await new Promise(resolve=>server.close(resolve));await sequelize.close();});
 const request=token=>nativeFetch(base+'/api/v1/me',{headers:token?{Authorization:token}:{}});
@@ -26,3 +28,5 @@ test('mark all as read stays below the supplied snapshot cursor',async()=>{verif
 test('browser tokens cannot create events and services cannot impersonate each other',async()=>{assert.equal((await api('/internal/events','POST',event())).status,401);assert.equal((await api('/internal/events','POST',event(),{...serviceHeaders,'X-WindChime-Service':'direct_messages'})).status,401);assert.equal((await api('/internal/events','POST',{...event(),type:'message.created',target_type:'conversation'},serviceHeaders)).status,422);});
 test('event retries deduplicate and self notifications are ignored',async()=>{const input=event();let called=0;mock.method(Notification,'findOrCreate',async options=>{assert.deepEqual(options.where,{source_service:'social',event_id:input.event_id,recipient_id:7});return [{id:42},called++===0];});assert.equal((await api('/internal/events','POST',input,serviceHeaders)).status,201);const duplicate=await api('/internal/events','POST',input,serviceHeaders);assert.equal(duplicate.status,200);assert.equal(duplicate.body.data.duplicate,true);const ignored=await api('/internal/events','POST',{...input,actor_id:7},serviceHeaders);assert.equal(ignored.body.data.ignored,true);assert.equal(called,2);});
 test('event payload rejects private message bodies and target mismatches',async()=>{const input=event();assert.equal((await api('/internal/events','POST',{...input,context:{content:'private message'}},serviceHeaders)).status,422);assert.equal((await api('/internal/events','POST',{...input,target_type:'profile'},serviceHeaders)).status,422);});
+
+test('blocked actors are excluded from notification list and unread count',async()=>{verified();mock.method(Safety,'actors',async()=>[8]);mock.method(Notification,'findAndCountAll',async options=>{assert.deepEqual(options.where.actor_id[Op.notIn],[8]);return {count:0,rows:[]};});mock.method(Notification,'count',async options=>{assert.deepEqual(options.where.actor_id[Op.notIn],[8]);return 0;});assert.equal((await api('/notifications')).status,200);assert.equal((await api('/notifications/unread-count')).body.data.count,0);});

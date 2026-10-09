@@ -7,6 +7,8 @@ import uploadMedia from '../middlewares/upload-media.middleware.js';
 import Actions from '../controllers/chat-actions.controller.js';
 const router=express.Router();
 router.use(authenticate);
+router.get('/moderation/reports/:report_id/messages/:message_id/media/:media_index',(req,res,next)=>Controller.reviewMedia(req,res,next));
+router.get('/conversations/:conversation_id/messages/:message_id/report-context',(req,res,next)=>Controller.reportContext(req,res,next));
 const sendLimit=rateLimit({windowMs:60000,limit:60,standardHeaders:true,legacyHeaders:false,keyGenerator:req=>String(req.auth.id),handler:(req,res,next)=>next(new errors.TooManyRequestsException('Please slow down and try again'))});
 router.get('/conversations',(req,res,next)=>Controller.inbox(req,res,next));
 router.post('/conversations',sendLimit,(req,res,next)=>Controller.start(req,res,next));

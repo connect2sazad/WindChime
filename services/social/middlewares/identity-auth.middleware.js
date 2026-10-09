@@ -1,6 +1,7 @@
 import errors from '../errors/registry.js';
 import utils from '../utils/registry.js';
 import config from '../config/config.js';
+import { blockedIds,assertAllowed } from '../services/safety.service.js';
 
 export default async function identityAuth(req, res, next) {
 
@@ -47,8 +48,14 @@ export default async function identityAuth(req, res, next) {
             id: body.data.id,
             username: body.data.username,
             name: body.data.name,
+            role: ['user','moderator','admin'].includes(body.data.role) ? body.data.role : 'user',
         }
 
+        req.blockedUserIds = await blockedIds(req.auth.id);
+        const path=req.originalUrl.split('?')[0];
+        const relationship=/\/connections\/\d+$/.test(path);
+        if(req.params.user_id&&!path.includes('/blocks/')&&!relationship)await assertAllowed(req.auth.id,Number(req.params.user_id));
+        if(path.includes('/friendships/requests')&&Number.isSafeInteger(req.body?.recipient_id))await assertAllowed(req.auth.id,req.body.recipient_id);
         return next();
 
     } catch (e) {

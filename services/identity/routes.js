@@ -33,6 +33,7 @@
  */
 
 import express from 'express';
+import moderationRoutes from './routes/moderation.route.js';
 
 import utils from './utils/registry.js';
 import config from './config/config.js';
@@ -62,4 +63,5 @@ Object.values(routes).forEach((route) => {
 });
 
 
+router.use(config.API_PREFIX, moderationRoutes);
 export default router;

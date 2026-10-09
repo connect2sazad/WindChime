@@ -94,7 +94,7 @@ class PostRepostController extends BaseController {
             const { post_id } = await this.getScope(req);
 
             const total = await this.model.count({
-                where: { post_id },
+                where: { post_id, ...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{}) },
             });
 
             const mine = await this.model.findOne({

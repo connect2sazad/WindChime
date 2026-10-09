@@ -4,6 +4,7 @@ import Models from '../models/registry.js';
 import errors from '../errors/registry.js';
 import utils from '../utils/registry.js';
 import path from 'node:path';
+import {visibleRecord} from '../services/safety.service.js';
 import { Op,literal } from 'sequelize';
 import { UPLOAD_DIR,cleanupFiles } from '../middlewares/upload-media.middleware.js';
 
@@ -30,7 +31,7 @@ class PostController extends BaseController {
  async create(req,res,next){return super.create(req,res,error=>{cleanupFiles(req.files||[]).then(()=>next(error));});}
  async media(req,res,next){try{
   const post_id=this.parseId(req.params.post_id);const id=this.parseId(req.params.media_id);
-  const post=await Models.Post.findByPk(post_id);if(!post||!post.status)throw new errors.NotFoundException('Post not found');
+  const post=await Models.Post.findByPk(post_id);if(!post||!post.status)throw new errors.NotFoundException('Post not found');visibleRecord(req,post);
   const media=await Models.PostMedia.findOne({where:{id,post_id}});if(!media||typeof media.filename!=='string'||path.basename(media.filename)!==media.filename||!/^[a-f0-9-]+\.(png|jpg|webp|mp4|webm)$/.test(media.filename)||!['image/png','image/jpeg','image/webp','video/mp4','video/webm'].includes(media.mime_type))throw new errors.NotFoundException('Media not found');
   res.set({'Content-Type':media.mime_type,'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store','Content-Disposition':'inline','Cross-Origin-Resource-Policy':'same-origin'});
   res.vary('Authorization');
@@ -47,7 +48,7 @@ class PostController extends BaseController {
  }catch(e){next(e);}}
  async reshares(req,res,next){try{
   const creator_id=this.parseId(req.params.user_id);const {page,limit}=utils.Validations.parseRequest(Schemas.Pagination.PaginationSchema,req.query);
-  const {count,rows}=await Models.PostRepost.findAndCountAll({where:{creator_id},include:[{model:Models.Post,as:'post',required:true,where:{status:true},include:this.includes}],distinct:true,limit,offset:(page-1)*limit,order:[['id','DESC']]});
+  const {count,rows}=await Models.PostRepost.findAndCountAll({where:{creator_id},include:[{model:Models.Post,as:'post',required:true,where:{status:true,...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{})},include:this.includes}],distinct:true,limit,offset:(page-1)*limit,order:[['id','DESC']]});
   return res.json({success:true,message:'Reshares retrieved',data:rows.map(row=>({...this.serialize(row.post),reshared_at:row.created_at})),pagination:{page,limit,total:count,total_pages:Math.ceil(count/limit),has_next_page:page*limit<count,has_previous_page:page>1}});
  }catch(e){next(e);}}
 }

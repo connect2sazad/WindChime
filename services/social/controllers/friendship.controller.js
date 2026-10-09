@@ -1,3 +1,4 @@
+import {assertAllowed} from '../services/safety.service.js';
 import BaseController from './base.controller.js';
 import Models from '../models/registry.js';
 import Schemas from '../schemas/registry.js';
@@ -21,6 +22,7 @@ class FriendshipController extends BaseController {
             );
 
             const requester_id = req.auth.id;
+            await assertAllowed(requester_id,recipient_id);
 
             if (requester_id === recipient_id) {
                 throw new errors.ValidationException(
@@ -129,6 +131,7 @@ class FriendshipController extends BaseController {
                         );
                     }
 
+                    if(req.respond==='accepted')await assertAllowed(friendship.user_low_id,friendship.user_high_id,transaction);
                     if (friendship.status !== 'pending') {
                         throw new errors.ConflictException(
                             'This request is no longer pending'

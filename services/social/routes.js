@@ -33,6 +33,7 @@
  */
 
 import express from 'express';
+import safetyRoutes from './routes/safety.route.js';
 
 import utils from './utils/registry.js';
 import config from './config/config.js';
@@ -62,6 +63,8 @@ router.get(config.API_PREFIX + '/me', Middlewares.identityAuth, (req, res) => {
 });
 
 router.use(routes.health);
+
+router.use(config.API_PREFIX, safetyRoutes);
 
 // get all routes from registry
 Object.values(routes).forEach((route) => {

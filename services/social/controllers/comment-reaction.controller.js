@@ -1,4 +1,5 @@
-import { fn, col } from 'sequelize';
+import {visibleRecord} from '../services/safety.service.js';
+import { fn, col, Op } from 'sequelize';
 import BaseController from './base.controller.js';
 import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
@@ -35,7 +36,7 @@ class CommentReactionController extends BaseController{
                 transaction,
                 ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
             });
-            if (!parent) throw new errors.NotFoundException('Parent comment not found');
+            if (!parent||parent.status===false) throw new errors.NotFoundException('Parent comment not found');visibleRecord(req,parent);
         }
         return scope;
     }
@@ -46,7 +47,7 @@ class CommentReactionController extends BaseController{
             const { comment_id } = await this.getScope(req);
             const rows = await this.model.findAll({
                 attributes: ['type', [fn('COUNT', col('id')), 'count']],
-                where: { comment_id }, group: ['type'], raw: true,
+                where: { comment_id, ...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{}) }, group: ['type'], raw: true,
             });
             const counts = { like: 0, love: 0, laugh: 0, sad: 0, angry: 0 };
             for (const row of rows) if (Object.hasOwn(counts, row.type)) counts[row.type] = Number(row.count);
@@ -69,7 +70,7 @@ class CommentReactionController extends BaseController{
             if (!Number.isSafeInteger(offset)) throw new errors.ValidationException('Page number is too large');
             const { comment_id } = await this.getScope(req);
             const { count, rows } = await this.model.findAndCountAll({
-                where: { comment_id, ...(type ? { type } : {}) },
+                where: { comment_id, ...(type ? { type } : {}), ...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{}) },
                 attributes: ['id', 'creator_id', 'type', 'created_at'],
                 order: [['id', 'DESC']], limit, offset,
             });

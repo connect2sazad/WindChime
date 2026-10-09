@@ -1,3 +1,4 @@
+import {ReportDialog} from '../../safety/index.js';
 import ProfileLink from '../../profiles/ProfileLink.js';
 import Avatar from '../../profiles/Avatar.js';
 import CommentReactionControl from './CommentReactionControl.jsx';
@@ -9,7 +10,7 @@ import { getComments } from '../api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 
 function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, token }) {
-    const [reactorsOpen, setReactorsOpen] = useState(false);
+    const [report,setReport]=useState(false);const [reactorsOpen, setReactorsOpen] = useState(false);
     const [author,setAuthor]=useState(null);
     useEffect(()=>{const controller=new AbortController();getDisplayUser(token,record.creator_id,controller.signal).then(user=>{if(!controller.signal.aborted)setAuthor(user);}).catch(()=>{if(!controller.signal.aborted)setAuthor({id:record.creator_id,name:'Author unavailable',username:null});});return()=>controller.abort();},[token,record.creator_id]);
     const person=record.creator_id===currentUser.id?currentUser:author?.id===record.creator_id?author:null;
@@ -23,11 +24,12 @@ function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, toke
                     <RelativeTime value={record.created_at} />
                     <button type="button" disabled={busy} onClick={()=>onReply({...record,name})}>Reply</button>
                     <CommentOptions disabled={busy} isReply={Boolean(record.parent_id)}
-                        onViewReactions={()=>setReactorsOpen(true)}
+                        onViewReactions={()=>setReactorsOpen(true)} onReport={record.creator_id!==currentUser.id?()=>setReport(true):undefined}
                         onDelete={record.creator_id===currentUser.id?()=>onDelete(record):undefined} />
                 </div>
             </div>
             <CommentReactionControl token={token} postId={postId} commentId={record.id} disabled={busy} />
+            {report&&<ReportDialog token={token} targetType="comment" targetId={record.id} userId={record.creator_id} onClose={()=>setReport(false)}/>}
             {reactorsOpen && <ReactionsDialog token={token} postId={postId} commentId={record.id} onClose={()=>setReactorsOpen(false)} />}
         </div>
     );

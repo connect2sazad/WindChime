@@ -11,6 +11,7 @@ const {default:Models}=await import('../models/registry.js');
 const {default:sequelize}=await import('../config/sequelize.js');
 const nativeFetch=globalThis.fetch;
 const {Op}=await import('sequelize');
+const {default:Block}=await import('../models/user-block.model.js');
 const {default:ConnectionIdentity}=await import('../services/identity.service.js');
 let server, base;
 before(async()=>{
@@ -18,14 +19,15 @@ before(async()=>{
     await new Promise(resolve=>server.once('listening',resolve));
     base='http://127.0.0.1:'+server.address().port;
 });
-beforeEach(()=>transaction());
+beforeEach(()=>{transaction();mock.method(Block,'findAll',async()=>[]);mock.method(Block,'findOne',async()=>null);});
 afterEach(()=>mock.restoreAll());
 after(async()=>{await new Promise(resolve=>server.close(resolve));await sequelize.close();});
-function identity(id=1,status=200){
+function identity(id=1,status=200,role='user'){
+    mock.method(Block,'findAll',async()=>[]);mock.method(Block,'findOne',async()=>null);
     mock.method(globalThis,'fetch',async(url,options)=>{
         assert.equal(String(url),'http://identity.test/api/v1/auth/me');
         assert.equal(options.headers.Authorization,'Bearer test-token');
-        return new Response(JSON.stringify({success:true,data:{id,status:true,username:'tester',name:'Tester'}}),{status});
+        return new Response(JSON.stringify({success:true,data:{id,status:true,role,username:'tester',name:'Tester'}}),{status});
     });
 }
 async function request(path,method='GET',body,token=true){
@@ -119,7 +121,7 @@ test('comment listing always scopes to URL post even with filters',async()=>{
     identity();mock.method(Models.Post,'findOne',async()=>record());
     mock.method(Models.Comment,'findAndCountAll',async options=>{
         const scopes=options.where[Object.getOwnPropertySymbols(options.where)[0]];
-        assert.deepEqual(scopes[0],{post_id:3,parent_id:null});return {count:1,rows:[record({post_id:3})]};
+        assert.deepEqual(scopes[0],{post_id:3,parent_id:null,status:true});return {count:1,rows:[record({post_id:3})]};
     });
     const r=await request('/posts/3/comments?search=Hello&status=true');assert.equal(r.status,200);assert.equal(r.body.data[0].post_id,3);
 });
@@ -182,7 +184,7 @@ test('reply query scopes pagination to the requested parent',async()=>{
     identity();mock.method(Models.Post,'findOne',async()=>record());mock.method(Models.Comment,'findOne',async()=>record({id:6,post_id:3,parent_id:null}));
     mock.method(Models.Comment,'findAndCountAll',async options=>{
         const [scope]=options.where[Object.getOwnPropertySymbols(options.where)[0]];
-        assert.deepEqual(scope,{post_id:3,parent_id:6});assert.equal(options.limit,1);assert.equal(options.offset,1);
+        assert.deepEqual(scope,{post_id:3,parent_id:6,status:true});assert.equal(options.limit,1);assert.equal(options.offset,1);
         return {count:2,rows:[record({post_id:3,parent_id:6})]};
     });
     const r=await request('/posts/3/comments?parent_id=6&page=2&limit=1');assert.equal(r.status,200);assert.equal(r.body.data[0].parent_id,6);
@@ -379,3 +381,25 @@ test('media sets private headers and treats cancelled transfers as normal',async
  await controller.media({params:{post_id:3,media_id:4}},res,()=>assert.fail('Aborted playback became an error'));
  assert.equal(headers['Content-Type'],'video/mp4');assert.equal(headers['Cache-Control'],'private, no-store');assert.equal(headers['Content-Disposition'],'inline');assert.equal(headers['X-Content-Type-Options'],'nosniff');
 });
+
+test('post upload accepts twelve ordered photos and rejects a thirteenth',async()=>{
+ identity();const fixture=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=','base64');let files=[];
+ mock.method(Models.Post,'create',async()=>({...record({content:'',kind:'post',media:[]}),reload:async()=>{}}));mock.method(Models.PostMedia,'bulkCreate',async rows=>{assert.equal(rows.length,12);assert.deepEqual(rows.map(row=>row.sort_order),Array.from({length:12},(_,index)=>index));files=rows.map(row=>row.filename);});
+ const {cleanupFiles,UPLOAD_DIR}=await import('../middlewares/upload-media.middleware.js');const path=await import('node:path');
+ try{const form=new FormData();for(let index=0;index<12;index++)form.append('media',new Blob([fixture],{type:'image/png'}),'photo-'+index+'.png');const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});assert.equal(response.status,201);}finally{await cleanupFiles(files.map(filename=>({path:path.join(UPLOAD_DIR,filename)})));}
+ mock.method(Models.Post,'create',()=>assert.fail('Thirteen photos reached database'));const form=new FormData();for(let index=0;index<13;index++)form.append('media',new Blob([fixture],{type:'image/png'}),'photo-'+index+'.png');const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});assert.equal(response.status,422);
+});
+test('landscape photos are rejected through the real multipart endpoint before inserting a post',async()=>{identity();mock.method(Models.Post,'create',()=>assert.fail('Landscape photo reached database'));const {default:sharp}=await import('sharp');const fixture=await sharp({create:{width:3,height:2,channels:3,background:'#fff'}}).png().toBuffer();const form=new FormData();form.append('media',new Blob([fixture],{type:'image/png'}),'landscape.png');const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});assert.equal(response.status,422);assert.match((await response.json()).message,/square or portrait/);});
+
+const {default:Report}=await import('../models/report.model.js');const {default:ModerationAction}=await import('../models/moderation-action.model.js');
+test('block removes both follow directions and friendship in one transaction',async()=>{identity();mock.method(ConnectionIdentity,'requireActiveUser',async()=>({id:2}));mock.method(Block,'findOrCreate',async options=>{assert.deepEqual(options.where,{blocker_id:1,blocked_id:2});assert.ok(options.transaction);return [{id:9},true];});mock.method(Models.Friendship,'destroy',async options=>{assert.deepEqual(options.where,{user_low_id:1,user_high_id:2});assert.ok(options.transaction);return 1;});mock.method(Models.Follow,'destroy',async options=>{assert.deepEqual(options.where[Op.or],[{follower_id:1,following_id:2},{follower_id:2,following_id:1}]);assert.ok(options.transaction);return 2;});assert.equal((await request('/blocks/2','PUT')).status,200);});
+test('unblocking removes only the caller’s own block and never recreates connections',async()=>{identity();mock.method(Block,'destroy',async options=>{assert.deepEqual(options.where,{blocker_id:1,blocked_id:2});return 1;});mock.method(Models.Friendship,'create',()=>assert.fail('Friendship restored'));assert.equal((await request('/blocks/2','DELETE')).status,200);});
+test('either-direction block hides posts, media and prevents reactions',async()=>{identity();mock.method(Block,'findAll',async()=>[{blocker_id:2,blocked_id:1}]);mock.method(Models.Post,'findOne',async()=>record({creator_id:2}));mock.method(Models.Post,'findByPk',async()=>record({creator_id:2}));mock.method(Models.PostReaction,'create',()=>assert.fail('Blocked reaction inserted'));assert.equal((await request('/posts/3')).status,404);assert.equal((await request('/posts/3/media/4')).status,404);assert.equal((await request('/posts/3/reactions','PUT',{type:'like'})).status,404);});
+test('block rejects friend requests and follows even through direct API calls',async()=>{identity();mock.method(Block,'findAll',async()=>[{blocker_id:1,blocked_id:2}]);mock.method(Block,'findOne',async()=>({id:9}));mock.method(Models.Friendship,'create',()=>assert.fail('Blocked friend request'));assert.equal((await request('/friendships/requests','POST',{recipient_id:2})).status,403);assert.equal((await request('/follows/2','PUT')).status,403);});
+test('feed query excludes blocked creators before pagination',async()=>{identity();mock.method(Block,'findAll',async()=>[{blocker_id:1,blocked_id:2}]);mock.method(Models.Post,'findAndCountAll',async options=>{assert.deepEqual(options.where[Op.and][0].creator_id[Op.notIn],[2]);assert.equal(options.where[Op.and][0].status,true);return {count:0,rows:[]};});assert.equal((await request('/feed?mode=discover')).status,200);});
+test('regular users cannot access reports or review decisions by claiming an admin role',async()=>{identity();mock.method(Report,'findAndCountAll',()=>assert.fail('Reports disclosed'));assert.equal((await request('/moderation/reports')).status,403);assert.equal((await request('/moderation/reports/4','PATCH',{role:'admin',action:'dismiss',note:'A fabricated role',decision_id:crypto.randomUUID()})).status,403);});
+test('report uses server-owned target author and rejects client ownership or self reports',async()=>{identity();mock.method(Models.Post,'findByPk',async()=>record({creator_id:2}));mock.method(Models.PostMedia,'findAll',async()=>[]);mock.method(Report,'findOrCreate',async options=>{assert.deepEqual(options.where,{reporter_id:1,target_type:'post',target_id:3});assert.equal(options.defaults.reported_user_id,2);assert.equal(options.defaults.snapshot.content,'Hello');return [{id:4,status:'open'},true];});assert.equal((await request('/reports','POST',{target_type:'post',target_id:3,reason:'spam'})).status,201);assert.equal((await request('/reports','POST',{target_type:'post',target_id:3,reason:'spam',reporter_id:99})).status,422);mock.method(Models.Post,'findByPk',async()=>record({creator_id:1}));assert.equal((await request('/reports','POST',{target_type:'post',target_id:3,reason:'spam'})).status,422);});
+test('staff content decisions hide the target and record an audit within the same transaction',async()=>{identity(1,200,'moderator');const report={id:4,status:'open',target_type:'post',target_id:3,reported_user_id:2,update:async(values,options)=>{assert.equal(values.status,'resolved');assert.equal(values.moderator_id,1);assert.ok(options.transaction);}};mock.method(ModerationAction,'findOne',async()=>null);mock.method(Report,'findByPk',async()=>report);mock.method(Models.Post,'findByPk',async()=>({update:async(values,options)=>{assert.deepEqual(values,{status:false});assert.ok(options.transaction);}}));mock.method(ModerationAction,'create',async values=>{assert.equal(values.actor_id,1);assert.equal(values.report_id,4);assert.equal(values.action,'hide_content');return {};});assert.equal((await request('/moderation/reports/4','PATCH',{action:'hide_content',note:'Verified spam content',decision_id:crypto.randomUUID()})).status,200);});
+test('hidden posts cannot be read or reacted to, even by directly addressing their IDs',async()=>{identity();mock.method(Models.Post,'findOne',async()=>record({status:false}));assert.equal((await request('/posts/3')).status,404);assert.equal((await request('/posts/3/reactions','PUT',{type:'like'})).status,404);});
+
+test('staff cannot inspect or decide reports about themselves',async()=>{identity(1,200,'admin');mock.method(Report,'findByPk',async()=>({id:4,target_type:'post',target_id:3,reported_user_id:1}));mock.method(Models.Post,'update',()=>assert.fail('Self-reviewed report'));assert.equal((await request('/moderation/reports/4')).status,403);assert.equal((await request('/moderation/reports/4/history')).status,403);assert.equal((await request('/moderation/reports/4','PATCH',{action:'hide_content',note:'A self review is forbidden',decision_id:crypto.randomUUID()})).status,403);});

@@ -207,3 +207,5 @@ test('separate logins issue distinct tokens even in the same second',async()=>{
  const first=JWT.generate(data).token;const second=JWT.generate(data).token;
  assert.notEqual(first,second);assert.notEqual(jwt.decode(first).jti,jwt.decode(second).jti);
 });
+
+test('JWT role claims cannot grant moderation privileges',async()=>{authenticate();const response=await request('/api/v1/moderation/users/2/status',{method:'PATCH',headers:{Authorization:'Bearer '+token({role:'admin'}),'Content-Type':'application/json'},body:JSON.stringify({active:false,note:'A forged admin claim',decision_id:crypto.randomUUID()})});assert.equal(response.status,403);});

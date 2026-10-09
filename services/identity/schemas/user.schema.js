@@ -41,6 +41,7 @@ import { BaseSchema } from './base.schema.js';
 import { PasswordSchema } from './password.schema.js';
 
 export const UserSchema = BaseSchema.extend({
+    role: z.enum(['user','moderator','admin']).default('user'),
     avatar_version: z.string().nullable().default(null),
     bio: z.string().default(''),
     email_verified_at: z.date().nullable().default(null),

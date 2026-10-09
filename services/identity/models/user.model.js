@@ -66,6 +66,7 @@ const User = sequelize.define(
             allowNull: false
         },
 
+        role: { type: DataTypes.ENUM('user','moderator','admin'), allowNull: false, defaultValue: 'user' },
         avatar_filename: { type: DataTypes.STRING(100), allowNull: true },
         bio: { type: DataTypes.STRING(500), allowNull: false, defaultValue: '' },
         email_verified_at: { type: DataTypes.DATE, allowNull: true },

@@ -47,6 +47,7 @@ import {
     where as sequelizeWhere,
 } from "sequelize";
 
+import { visibleRecord,visibleScope } from '../services/safety.service.js';
 import errors from '../errors/registry.js';
 import utils from '../utils/registry.js';
 import Schemas from '../schemas/registry.js';
@@ -113,7 +114,8 @@ class BaseController {
                 where, transaction,
                 ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
             });
-            if (!record) throw new errors.NotFoundException(parent.model.name + ' not found');
+            if (!record||record.status===false) throw new errors.NotFoundException(parent.model.name + ' not found');
+            visibleRecord(req,record);
             if (parent.field) scope[parent.field] = id;
         }
         return scope;
@@ -145,7 +147,8 @@ class BaseController {
             where: { ...scope, id }, include: this.includes, transaction,
             ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
         });
-        if (!record) throw new errors.NotFoundException(this.model.name + ' not found');
+        if (!record||record.status===false) throw new errors.NotFoundException(this.model.name + ' not found');
+        visibleRecord(req,record);
         if (write) this.assertOwner(req, record);
         return record;
     }
@@ -229,7 +232,7 @@ class BaseController {
                     }
                     : null;
 
-            const scope = await this.getListScope(req);
+            const scope = { ...await this.getListScope(req), ...visibleScope(req,this.model), ...(this.model.name==='Post'||this.model.name==='Comment'?{status:true}:{}) };
             const filteredWhere = searchCondition
                 ? {
                     [Op.and]: [

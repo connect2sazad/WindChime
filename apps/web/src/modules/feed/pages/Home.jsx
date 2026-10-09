@@ -25,6 +25,7 @@ export default function Home({
     const route = useNavigate();
     const user = session.user;
 
+    useEffect(()=>{const changed=()=>{setFeedPage(1);setPosts([]);setFeedRevision(value=>value+1);};window.addEventListener('windchime:safety-changed',changed);return()=>window.removeEventListener('windchime:safety-changed',changed);},[]);
     useEffect(() => {
         const controller = new AbortController();
 

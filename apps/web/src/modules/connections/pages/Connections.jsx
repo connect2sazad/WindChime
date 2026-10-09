@@ -10,6 +10,7 @@ const TABS=[['incoming','Requests'],['sent','Sent'],['friends','Friends'],['foll
 export default function Connections({session}){
  const [params,setParams]=useSearchParams();const selected=params.get('view')||'incoming';const view=TABS.some(([key])=>key===selected)?selected:'incoming';
  const [query,setQuery]=useState('');const [search,setSearch]=useState('');const [page,setPage]=useState(1);const [revision,setRevision]=useState(0);const [rows,setRows]=useState([]);const [pagination,setPagination]=useState(null);const [loading,setLoading]=useState(true);const [error,setError]=useState('');
+ useEffect(()=>{const changed=()=>setRevision(value=>value+1);window.addEventListener('windchime:safety-changed',changed);return()=>window.removeEventListener('windchime:safety-changed',changed);},[]);
  useEffect(()=>{const timer=setTimeout(()=>{setSearch(query.trim());setPage(1);},350);return()=>clearTimeout(timer);},[query]);
  useEffect(()=>{const controller=new AbortController();async function load(){setLoading(true);setError('');try{
   const result=view==='discover'?await findPeople(session.token,search,page,controller.signal):await listConnections(session.token,view,page,controller.signal);

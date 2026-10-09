@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import Block from '../models/user-block.model.js';
 import { z } from '../docs/openapi.js';
 import Models from '../models/registry.js';
 import utils from '../utils/registry.js';
@@ -19,6 +20,7 @@ export class ConnectionsController {
   let model,where;
   if(view==='following'||view==='followers'){model=Models.Follow;where={[view==='following'?'follower_id':'following_id']:id};}
   else {model=Models.Friendship;where={[Op.or]:[{user_low_id:id},{user_high_id:id}],status:view==='friends'?'accepted':'pending',...(view==='sent'?{requester_id:id}:view==='incoming'?{requester_id:{[Op.ne]:id}}:{})};}
+  if(req.blockedUserIds?.length){const excluded=req.blockedUserIds;where[Op.and]=model===Models.Follow?{[view==='following'?'following_id':'follower_id']:{[Op.notIn]:excluded}}:{user_low_id:{[Op.notIn]:excluded},user_high_id:{[Op.notIn]:excluded}};}
   const peerId=row=>model===Models.Follow?(view==='following'?row.following_id:row.follower_id):(row.user_low_id===id?row.user_high_id:row.user_low_id);
   let rows,count;
   if(search){const all=await model.findAll({where,order:[['id','DESC']]});const matching=await Identity.searchIds([...new Set(all.map(peerId))],search,req.headers.authorization);const filtered=all.filter(row=>matching.has(peerId(row)));count=filtered.length;rows=filtered.slice((page-1)*limit,page*limit);}
@@ -32,7 +34,8 @@ export class ConnectionsController {
    Models.Friendship.findOne({where:{user_low_id:Math.min(id,user_id),user_high_id:Math.max(id,user_id)}}),
    Models.Follow.findOne({where:{follower_id:id,following_id:user_id}}),
    Models.Follow.findOne({where:{follower_id:user_id,following_id:id}})]);
-  return respond(res,{friendship:friendship?.toJSON()||null,following:Boolean(following),follows_you:Boolean(follower)});
+  const mine=await Block.findOne({where:{blocker_id:id,blocked_id:user_id}});const blocked=req.blockedUserIds?.includes(user_id)||false;
+  return respond(res,{friendship:blocked?null:friendship?.toJSON()||null,following:!blocked&&Boolean(following),follows_you:!blocked&&Boolean(follower),blocked,blocked_by_me:Boolean(mine)});
  }catch(e){next(e);}}
  async follow(req,res,next){try{
   const {user_id}=utils.Validations.parseRequest(Params,req.params);
