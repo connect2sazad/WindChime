@@ -1,32 +1,38 @@
-
-
-
 import Icon from '../../../shared/components/Icon.jsx';
 
 import FriendRequestsPreview from '../../connections/RequestsPreview.js';
 import { useNavigate } from 'react-router-dom';
 
-
 import { useEffect, useRef, useState } from 'react';
 import { getPersonalizedFeed } from '../../posts/api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 
-
-export default function Home({
-    session,
-    logoutError,
-}) {
-    const [feedMode,setFeedMode]=useState('network');
+// Loads the network or discovery feed, then handles paging and refresh actions.
+export default function Home({ session, logoutError }) {
+    const [feedMode, setFeedMode] = useState('network');
     const [posts, setPosts] = useState([]);
     const [feedLoading, setFeedLoading] = useState(true);
     const [feedError, setFeedError] = useState('');
     const [postNotice, setPostNotice] = useState('');
-    const [feedPage, setFeedPage] = useState(1); const [feedPagination, setFeedPagination] = useState(null); const [feedRevision, setFeedRevision] = useState(0); const morePending = useRef(false);
+    const [feedPage, setFeedPage] = useState(1);
+    const [feedPagination, setFeedPagination] = useState(null);
+    const [feedRevision, setFeedRevision] = useState(0);
+    const morePending = useRef(false);
     const route = useNavigate();
     const user = session.user;
 
-    useEffect(()=>{const changed=()=>{setFeedPage(1);setPosts([]);setFeedRevision(value=>value+1);};window.addEventListener('windchime:safety-changed',changed);return()=>window.removeEventListener('windchime:safety-changed',changed);},[]);
     useEffect(() => {
+        // A safety change should hide blocked content immediately; reload from page one.
+        const changed = () => {
+            setFeedPage(1);
+            setPosts([]);
+            setFeedRevision((value) => value + 1);
+        };
+        window.addEventListener('windchime:safety-changed', changed);
+        return () => window.removeEventListener('windchime:safety-changed', changed);
+    }, []);
+    useEffect(() => {
+        // Re-fetch when the user, feed mode, page, or refresh counter changes.
         const controller = new AbortController();
 
         async function load() {
@@ -34,10 +40,25 @@ export default function Home({
             setFeedError('');
 
             try {
-                const result = await getPersonalizedFeed(session.token, controller.signal, feedPage, feedMode);
+                const result = await getPersonalizedFeed(
+                    session.token,
+                    controller.signal,
+                    feedPage,
+                    feedMode,
+                );
 
-                const authors = new Map(await Promise.all([...new Set(result.data.map(post => post.creator_id))].map(async id => [id, id === user.id ? { id: user.id, name: user.name, username: user.username } : await getDisplayUser(session.token, id, controller.signal)])));
-                const items = result.data.map(post => {
+                // Resolve each creator once, then reuse that profile for repeated posts.
+                const authors = new Map(
+                    await Promise.all(
+                        [...new Set(result.data.map((post) => post.creator_id))].map(async (id) => [
+                            id,
+                            id === user.id
+                                ? { id: user.id, name: user.name, username: user.username }
+                                : await getDisplayUser(session.token, id, controller.signal),
+                        ]),
+                    ),
+                );
+                const items = result.data.map((post) => {
                     const mine = post.creator_id === user.id;
 
                     return {
@@ -50,17 +71,33 @@ export default function Home({
                     };
                 });
 
-                if (!controller.signal.aborted) { setPosts(previous => feedPage === 1 ? items : [...previous, ...items.filter(item => !previous.some(existing => existing.id === item.id))]); setFeedPagination(result.pagination); }
+                if (!controller.signal.aborted) {
+                    setPosts((previous) =>
+                        feedPage === 1
+                            ? items
+                            : [
+                                  ...previous,
+                                  ...items.filter(
+                                      (item) =>
+                                          !previous.some((existing) => existing.id === item.id),
+                                  ),
+                              ],
+                    );
+                    setFeedPagination(result.pagination);
+                }
             } catch (error) {
                 if (!controller.signal.aborted) {
                     setFeedError(
                         error instanceof TypeError
                             ? 'Unable to reach WindChime. Please try again.'
-                            : error.message
+                            : error.message,
                     );
                 }
             } finally {
-                if (!controller.signal.aborted) { setFeedLoading(false); morePending.current = false; }
+                if (!controller.signal.aborted) {
+                    setFeedLoading(false);
+                    morePending.current = false;
+                }
             }
         }
 
@@ -68,9 +105,25 @@ export default function Home({
         return () => controller.abort();
     }, [session.token, user.id, user.name, user.username, feedPage, feedRevision, feedMode]);
 
-    function navigate() { route('/connections'); }
-    function changeFeed(mode){if(mode===feedMode)return;morePending.current=false;setFeedMode(mode);setFeedPage(1);setPosts([]);setFeedPagination(null);setFeedLoading(true);setFeedError('');}
-    function refreshFeed(){morePending.current=false;setFeedPage(1);setFeedRevision(value=>value+1);setFeedLoading(true);}
+    function navigate() {
+        route('/connections');
+    }
+    function changeFeed(mode) {
+        if (mode === feedMode) return;
+        morePending.current = false;
+        setFeedMode(mode);
+        setFeedPage(1);
+        setPosts([]);
+        setFeedPagination(null);
+        setFeedLoading(true);
+        setFeedError('');
+    }
+    function refreshFeed() {
+        morePending.current = false;
+        setFeedPage(1);
+        setFeedRevision((value) => value + 1);
+        setFeedLoading(true);
+    }
 
     return (
         <div className="wc-home">
@@ -78,34 +131,138 @@ export default function Home({
                 <header className="wc-feed-header">
                     <div>
                         <p className="wc-overline">YOUR DAILY BREATH OF FRESH AIR</p>
-                        <h1>A little <em>connection.</em></h1>
+                        <h1>
+                            A little <em>connection.</em>
+                        </h1>
                     </div>
-                    <span className="wc-header-mark" aria-hidden="true">✳</span>
+                    <span className="wc-header-mark" aria-hidden="true">
+                        ✳
+                    </span>
                 </header>
 
-                <nav className="wc-feed-tabs" aria-label="Feed selection"><button type="button" className={feedMode==='network'?'active':''} aria-pressed={feedMode==='network'} onClick={()=>changeFeed('network')}>Your circle</button><button type="button" className={feedMode==='discover'?'active':''} aria-pressed={feedMode==='discover'} onClick={()=>changeFeed('discover')}>Discover</button><button type="button" className="wc-refresh-feed" disabled={feedLoading} onClick={refreshFeed}>↻ Refresh</button></nav><div className="wc-preview-label">{feedMode==='network'?'Your posts, accepted friends, and people you follow · newest first':'Public moments from across WindChime · newest first'}</div>
+                <nav className="wc-feed-tabs" aria-label="Feed selection">
+                    <button
+                        type="button"
+                        className={feedMode === 'network' ? 'active' : ''}
+                        aria-pressed={feedMode === 'network'}
+                        onClick={() => changeFeed('network')}
+                    >
+                        Your circle
+                    </button>
+                    <button
+                        type="button"
+                        className={feedMode === 'discover' ? 'active' : ''}
+                        aria-pressed={feedMode === 'discover'}
+                        onClick={() => changeFeed('discover')}
+                    >
+                        Discover
+                    </button>
+                    <button
+                        type="button"
+                        className="wc-refresh-feed"
+                        disabled={feedLoading}
+                        onClick={refreshFeed}
+                    >
+                        ↻ Refresh
+                    </button>
+                </nav>
+                <div className="wc-preview-label">
+                    {feedMode === 'network'
+                        ? 'Your posts, accepted friends, and people you follow · newest first'
+                        : 'Public moments from across WindChime · newest first'}
+                </div>
                 {logoutError && (
-                    <p className="wc-notice" role="alert">{logoutError}</p>
+                    <p className="wc-notice" role="alert">
+                        {logoutError}
+                    </p>
                 )}
 
-                {postNotice && <p className="wc-notice" role="status">{postNotice}</p>}
+                {postNotice && (
+                    <p className="wc-notice" role="status">
+                        {postNotice}
+                    </p>
+                )}
                 <div className="wc-feed-heading">
-                    <h2>{feedMode==='network'?'From your circle':'Discover conversations'}</h2><span>Latest moments</span>
+                    <h2>
+                        {feedMode === 'network' ? 'From your circle' : 'Discover conversations'}
+                    </h2>
+                    <span>Latest moments</span>
                 </div>
 
-                {posts.map(post => (
-                    <PostCard key={post.id} post={post} currentUser={user} token={session.token} onUpdated={data => { setPosts(previous => previous.map(item => item.id === data.id ? { ...item, ...data } : item)); setPostNotice('Post updated.'); }} onDeleted={id => { setPosts(previous => previous.filter(item => item.id !== id)); setPostNotice('Post deleted.'); }} />
+                {posts.map((post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        currentUser={user}
+                        token={session.token}
+                        onUpdated={(data) => {
+                            setPosts((previous) =>
+                                previous.map((item) =>
+                                    item.id === data.id ? { ...item, ...data } : item,
+                                ),
+                            );
+                            setPostNotice('Post updated.');
+                        }}
+                        onDeleted={(id) => {
+                            setPosts((previous) => previous.filter((item) => item.id !== id));
+                            setPostNotice('Post deleted.');
+                        }}
+                    />
                 ))}
 
-                {feedLoading && <p className="wc-notice" role="status">Loading conversations…</p>}
+                {feedLoading && (
+                    <p className="wc-notice" role="status">
+                        Loading conversations…
+                    </p>
+                )}
 
-                {feedError && <div className="wc-notice" role="alert"><p>{feedError}</p><button className="wc-feed-more" onClick={() => setFeedRevision(value => value + 1)}>Try again</button></div>}
+                {feedError && (
+                    <div className="wc-notice" role="alert">
+                        <p>{feedError}</p>
+                        <button
+                            className="wc-feed-more"
+                            onClick={() => setFeedRevision((value) => value + 1)}
+                        >
+                            Try again
+                        </button>
+                    </div>
+                )}
 
                 {!feedLoading && !feedError && posts.length === 0 && (
-                    <div className="wc-notice"><p>{feedMode==='network'?'Your circle is quiet. Follow someone or accept a friend request to see their moments here.':'No public posts yet. Share the first moment.'}</p>{feedMode==='network'&&<button className="wc-feed-more" onClick={()=>route('/connections?view=discover')}>Find your people →</button>}</div>
+                    <div className="wc-notice">
+                        <p>
+                            {feedMode === 'network'
+                                ? 'Your circle is quiet. Follow someone or accept a friend request to see their moments here.'
+                                : 'No public posts yet. Share the first moment.'}
+                        </p>
+                        {feedMode === 'network' && (
+                            <button
+                                className="wc-feed-more"
+                                onClick={() => route('/connections?view=discover')}
+                            >
+                                Find your people →
+                            </button>
+                        )}
+                    </div>
                 )}
                 {!feedLoading && !feedError && posts.length > 0 && (
-                    <p className="wc-feed-end">{feedPagination?.has_next_page ? <button className="wc-feed-more" disabled={feedLoading} onClick={() => { if (morePending.current) return; morePending.current = true; setFeedPage(value => value + 1); }}>Load more moments ↓</button> : 'You’re all caught up ✳'}</p>
+                    <p className="wc-feed-end">
+                        {feedPagination?.has_next_page ? (
+                            <button
+                                className="wc-feed-more"
+                                disabled={feedLoading}
+                                onClick={() => {
+                                    if (morePending.current) return;
+                                    morePending.current = true;
+                                    setFeedPage((value) => value + 1);
+                                }}
+                            >
+                                Load more moments ↓
+                            </button>
+                        ) : (
+                            'You’re all caught up ✳'
+                        )}
+                    </p>
                 )}
             </main>
 
@@ -117,10 +274,16 @@ export default function Home({
 
                 <section className="wc-connection-card">
                     <div className="wc-mini-chimes" aria-hidden="true">
-                        <span /><span /><span />
+                        <span />
+                        <span />
+                        <span />
                     </div>
                     <p className="wc-overline">MAKE ROOM FOR PEOPLE</p>
-                    <h2>A hello can<br />go a long way.</h2>
+                    <h2>
+                        A hello can
+                        <br />
+                        go a long way.
+                    </h2>
                     <p>Find familiar faces and make room for new ones.</p>
                     <button onClick={() => navigate('Connections')}>
                         Find your people <Icon name="arrow" size={18} />

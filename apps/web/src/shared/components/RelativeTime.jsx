@@ -1,3 +1,4 @@
+// Formats a timestamp for display and refreshes it as time passes.
 import { useEffect, useState } from 'react';
 import { formatRelativeTime } from '../utils/formatRelativeTime.js';
 
@@ -10,9 +11,11 @@ export default function RelativeTime({ value, className }) {
     const date = value == null || value === '' ? null : new Date(value);
     const valid = date && Number.isFinite(date.getTime());
     return (
-        <time className={className}
+        <time
+            className={className}
             dateTime={valid ? date.toISOString() : undefined}
-            title={valid ? date.toLocaleString() : 'Unknown date'}>
+            title={valid ? date.toLocaleString() : 'Unknown date'}
+        >
             {formatRelativeTime(value, now)}
         </time>
     );

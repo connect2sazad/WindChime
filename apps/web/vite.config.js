@@ -1,7 +1,7 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
-// https://vite.dev/config/
+// Vite setup for the React frontend and its development/production builds.
 export default defineConfig({
-  plugins: [react()],
-})
+    plugins: [react()],
+});

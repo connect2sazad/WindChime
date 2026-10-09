@@ -1,1 +1,45 @@
-.wc-brand-button{border:0;background:transparent;padding:0}.wc-brand-button img{max-width:200px;height:auto}.wc-sidebar button{cursor:pointer}.wc-sidebar button:focus-visible{outline:3px solid #467a68;outline-offset:3px}.wc-global-error{position:fixed;top:80px;right:20px;z-index:30;background:#faeded;color:#8d3644;padding:12px;border-radius:12px}.wc-profile-page,.wc-create-page{padding-top:105px;padding-bottom:100px}@media(max-width:767px){.wc-profile-page,.wc-create-page{padding-top:85px;padding-bottom:100px}.wc-brand-button img{max-width:160px}.wc-global-error{top:65px}}
+/* Persistent feed navigation and responsive menu styles. */
+.wc-brand-button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+}
+.wc-brand-button img {
+    max-width: 200px;
+    height: auto;
+}
+.wc-sidebar button {
+    cursor: pointer;
+}
+.wc-sidebar button:focus-visible {
+    outline: 3px solid #467a68;
+    outline-offset: 3px;
+}
+.wc-global-error {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 30;
+    background: #faeded;
+    color: #8d3644;
+    padding: 12px;
+    border-radius: 12px;
+}
+.wc-profile-page,
+.wc-create-page {
+    padding-top: 105px;
+    padding-bottom: 100px;
+}
+@media (max-width: 767px) {
+    .wc-profile-page,
+    .wc-create-page {
+        padding-top: 85px;
+        padding-bottom: 100px;
+    }
+    .wc-brand-button img {
+        max-width: 160px;
+    }
+    .wc-global-error {
+        top: 65px;
+    }
+}

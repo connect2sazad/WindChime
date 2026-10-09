@@ -1,3 +1,4 @@
+/* Layout and visual states used only by the registration form. */
 .register-page {
     min-height: 100svh;
     display: grid;
@@ -6,8 +7,7 @@
     color: #183b44;
     background:
         radial-gradient(ellipse at 15% 15%, #dfead2, transparent 45%),
-        radial-gradient(ellipse at 90% 90%, #dae9e5, transparent 45%),
-        #f6f8f2;
+        radial-gradient(ellipse at 90% 90%, #dae9e5, transparent 45%), #f6f8f2;
 }
 
 .register-card {
@@ -172,13 +172,54 @@
         grid-template-columns: 1fr;
         gap: 16px;
     }
-}.availability { display:block; min-height:20px; padding-top:5px; font-size:10px; color:#73827b; }
-.availability.available { color:#467a68; }
-.availability.taken,.availability.invalid,.availability.error { color:#a95461; }
-.register-card .register-verification { display:block; }
-.register-code { font-size:26px!important; letter-spacing:12px; text-align:center; }
-.register-verification .signin-button { margin-top:20px; }
-.register-code-actions { display:flex; justify-content:space-between; gap:12px; margin-top:16px; }
-.register-code-actions button { border:0; background:transparent; min-height:40px; color:#467a68; font-size:12px; }
-.register-code-actions button:disabled { opacity:.5; }
-.register-dev-note { padding:12px; margin-bottom:16px; background:#eff4e8; border-radius:10px; font-size:11px; color:#617653; }
+}
+.availability {
+    display: block;
+    min-height: 20px;
+    padding-top: 5px;
+    font-size: 10px;
+    color: #73827b;
+}
+.availability.available {
+    color: #467a68;
+}
+.availability.taken,
+.availability.invalid,
+.availability.error {
+    color: #a95461;
+}
+.register-card .register-verification {
+    display: block;
+}
+.register-code {
+    font-size: 26px !important;
+    letter-spacing: 12px;
+    text-align: center;
+}
+.register-verification .signin-button {
+    margin-top: 20px;
+}
+.register-code-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+}
+.register-code-actions button {
+    border: 0;
+    background: transparent;
+    min-height: 40px;
+    color: #467a68;
+    font-size: 12px;
+}
+.register-code-actions button:disabled {
+    opacity: 0.5;
+}
+.register-dev-note {
+    padding: 12px;
+    margin-bottom: 16px;
+    background: #eff4e8;
+    border-radius: 10px;
+    font-size: 11px;
+    color: #617653;
+}

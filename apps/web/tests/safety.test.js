@@ -1,4 +1,65 @@
-import {test,afterEach,mock} from 'node:test';import assert from 'node:assert/strict';import {blockUser,unblockUser,sendReport,reviewReport} from '../src/modules/safety/api/index.js';afterEach(()=>mock.restoreAll());
-test('blocking and unblocking use the authenticated user and target URL',async()=>{const calls=[];mock.method(globalThis,'fetch',async(url,options)=>{calls.push({url:String(url),options});assert.equal(options.headers.Authorization,'Bearer test');return Response.json({success:true,data:{}});});await blockUser('test',2);await unblockUser('test',2);assert.match(calls[0].url,/\/blocks\/2$/);assert.equal(calls[0].options.method,'PUT');assert.equal(calls[1].options.method,'DELETE');assert.equal(calls[0].options.body,undefined);});
-test('report sends the reported message scope, never the reporter identity',async()=>{mock.method(globalThis,'fetch',async(url,options)=>{const body=JSON.parse(options.body);assert.deepEqual(body,{target_type:'message',target_id:7,conversation_id:4,reason:'harassment',details:'Repeated unwanted messages'});assert.equal(body.reporter_id,undefined);return Response.json({success:true,data:{id:3}});});await sendReport('test',{target_type:'message',target_id:7,conversation_id:4,reason:'harassment',details:'Repeated unwanted messages'});});
-test('moderation sends a stable decision ID and propagates authorization rejection',async()=>{const decision_id=crypto.randomUUID();mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(JSON.parse(options.body).decision_id,decision_id);assert.equal(options.method,'PATCH');return Response.json({success:false,message:'Moderation access required'},{status:403});});await assert.rejects(()=>reviewReport('test',3,{action:'dismiss',note:'No policy violation found',decision_id}),error=>error.status===403);});
+// Checks authenticated block, unblock, reporting, and moderation requests.
+import { test, afterEach, mock } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+    blockUser,
+    unblockUser,
+    sendReport,
+    reviewReport,
+} from '../src/modules/safety/api/index.js';
+afterEach(() => mock.restoreAll());
+test('blocking and unblocking use the authenticated user and target URL', async () => {
+    const calls = [];
+    mock.method(globalThis, 'fetch', async (url, options) => {
+        calls.push({ url: String(url), options });
+        assert.equal(options.headers.Authorization, 'Bearer test');
+        return Response.json({ success: true, data: {} });
+    });
+    await blockUser('test', 2);
+    await unblockUser('test', 2);
+    assert.match(calls[0].url, /\/blocks\/2$/);
+    assert.equal(calls[0].options.method, 'PUT');
+    assert.equal(calls[1].options.method, 'DELETE');
+    assert.equal(calls[0].options.body, undefined);
+});
+test('report sends the reported message scope, never the reporter identity', async () => {
+    mock.method(globalThis, 'fetch', async (url, options) => {
+        const body = JSON.parse(options.body);
+        assert.deepEqual(body, {
+            target_type: 'message',
+            target_id: 7,
+            conversation_id: 4,
+            reason: 'harassment',
+            details: 'Repeated unwanted messages',
+        });
+        assert.equal(body.reporter_id, undefined);
+        return Response.json({ success: true, data: { id: 3 } });
+    });
+    await sendReport('test', {
+        target_type: 'message',
+        target_id: 7,
+        conversation_id: 4,
+        reason: 'harassment',
+        details: 'Repeated unwanted messages',
+    });
+});
+test('moderation sends a stable decision ID and propagates authorization rejection', async () => {
+    const decision_id = crypto.randomUUID();
+    mock.method(globalThis, 'fetch', async (url, options) => {
+        assert.equal(JSON.parse(options.body).decision_id, decision_id);
+        assert.equal(options.method, 'PATCH');
+        return Response.json(
+            { success: false, message: 'Moderation access required' },
+            { status: 403 },
+        );
+    });
+    await assert.rejects(
+        () =>
+            reviewReport('test', 3, {
+                action: 'dismiss',
+                note: 'No policy violation found',
+                decision_id,
+            }),
+        (error) => error.status === 403,
+    );
+});

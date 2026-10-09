@@ -1,7 +1,9 @@
+// Social-service requests for reading, creating, and undoing a repost.
 import { apiRequest, SOCIAL_API } from '../../../shared/api/request.js';
 export async function getRepostSummary(token, postId, signal) {
     const body = await apiRequest(SOCIAL_API, `/posts/${postId}/repost`, { token, signal });
-    if (!Number.isInteger(body.data?.total) || typeof body.data.reposted !== 'boolean') throw new Error('Unexpected repost summary');
+    if (!Number.isInteger(body.data?.total) || typeof body.data.reposted !== 'boolean')
+        throw new Error('Unexpected repost summary');
     return body.data;
 }
 export async function addRepost(token, postId) {

@@ -1,17 +1,18 @@
+/* App-wide foundation: colors, typography, resets, and shared layout rules. */
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  font-family: Inter, "Segoe UI", sans-serif;
+    margin: 0;
+    font-family: Inter, 'Segoe UI', sans-serif;
 }
 
 button,
 input {
-  font: inherit;
+    font: inherit;
 }
 
 a {
-  color: inherit;
+    color: inherit;
 }

@@ -1,461 +1,467 @@
+/* Shared styles for the sign-in and account-verification screens. */
 .windchime-auth {
-  min-height: 100svh;
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  background: #f8f9f6;
-  color: #172f35;
+    min-height: 100svh;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    background: #f8f9f6;
+    color: #172f35;
 }
 
 .story-panel {
-  position: relative;
-  min-height: 100svh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 40px 56px 28px;
-  color: #eef8ee;
-  background:
-    radial-gradient(ellipse at 90% 15%, #285b63 0%, transparent 55%),
-    linear-gradient(155deg, #183b44, #102a33);
+    position: relative;
+    min-height: 100svh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 56px 28px;
+    color: #eef8ee;
+    background:
+        radial-gradient(ellipse at 90% 15%, #285b63 0%, transparent 55%),
+        linear-gradient(155deg, #183b44, #102a33);
 }
 
 .wordmark {
-  position: relative;
-  z-index: 1;
-  width: fit-content;
-  font-size: 28px;
-  font-weight: 750;
-  letter-spacing: -1.5px;
-  text-decoration: none;
+    position: relative;
+    z-index: 1;
+    width: fit-content;
+    font-size: 28px;
+    font-weight: 750;
+    letter-spacing: -1.5px;
+    text-decoration: none;
 }
 
 .wordmark span {
-  margin-left: 8px;
-  color: #c9f28d;
+    margin-left: 8px;
+    color: #c9f28d;
 }
 
 .story-copy {
-  position: relative;
-  z-index: 1;
-  margin: auto 0;
-  padding: 130px 0 70px;
+    position: relative;
+    z-index: 1;
+    margin: auto 0;
+    padding: 130px 0 70px;
 }
 
 .eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
 }
 
 .story-copy h1 {
-  margin: 22px 0 26px;
-  font-size: clamp(48px, 5.6vw, 88px);
-  line-height: 1.04;
-  font-weight: 550;
-  letter-spacing: -4px;
+    margin: 22px 0 26px;
+    font-size: clamp(48px, 5.6vw, 88px);
+    line-height: 1.04;
+    font-weight: 550;
+    letter-spacing: -4px;
 }
 
 .story-copy h1 em {
-  font-family: Georgia, serif;
-  font-weight: 400;
-  color: #c9f28d;
+    font-family: Georgia, serif;
+    font-weight: 400;
+    color: #c9f28d;
 }
 
 .story-description {
-  max-width: 330px;
-  font-size: 15px;
-  line-height: 1.8;
-  color: #c1d4d5;
+    max-width: 330px;
+    font-size: 15px;
+    line-height: 1.8;
+    color: #c1d4d5;
 }
 
 .story-footer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  font-size: 11px;
-  color: #a7c2c6;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    font-size: 11px;
+    color: #a7c2c6;
 }
 
 .chimes {
-  position: absolute;
-  top: 0;
-  right: 26px;
-  width: 260px;
-  height: 380px;
+    position: absolute;
+    top: 0;
+    right: 26px;
+    width: 260px;
+    height: 380px;
 }
 
 .chime {
-  position: absolute;
-  width: 58px;
-  border: 1px solid #729e9e;
-  border-radius: 0 0 32px 32px;
-  background: linear-gradient(90deg, #ffffff05, #ffffff14, #ffffff03);
-  transform-origin: top center;
-  animation: sway 7s ease-in-out infinite alternate;
+    position: absolute;
+    width: 58px;
+    border: 1px solid #729e9e;
+    border-radius: 0 0 32px 32px;
+    background: linear-gradient(90deg, #ffffff05, #ffffff14, #ffffff03);
+    transform-origin: top center;
+    animation: sway 7s ease-in-out infinite alternate;
 }
 
 .chime::before {
-  content: "";
-  position: absolute;
-  top: -100px;
-  left: 50%;
-  height: 100px;
-  width: 1px;
-  background: #83aaa4;
+    content: '';
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    height: 100px;
+    width: 1px;
+    background: #83aaa4;
 }
 
 .chime span {
-  position: absolute;
-  bottom: 30px;
-  left: 50%;
-  white-space: nowrap;
-  padding: 10px 15px;
-  border-radius: 18px 18px 18px 4px;
-  color: #173740;
-  background: #d1edbd;
-  font-size: 12px;
-  transform: translateX(-50%);
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    white-space: nowrap;
+    padding: 10px 15px;
+    border-radius: 18px 18px 18px 4px;
+    color: #173740;
+    background: #d1edbd;
+    font-size: 12px;
+    transform: translateX(-50%);
 }
 
 .chime-one {
-  left: 15px;
-  top: 85px;
-  height: 150px;
+    left: 15px;
+    top: 85px;
+    height: 150px;
 }
 
 .chime-two {
-  left: 100px;
-  top: 135px;
-  height: 180px;
-  animation-delay: -3s;
+    left: 100px;
+    top: 135px;
+    height: 180px;
+    animation-delay: -3s;
 }
 
 .chime-three {
-  left: 185px;
-  top: 65px;
-  height: 140px;
-  animation-delay: -5s;
+    left: 185px;
+    top: 65px;
+    height: 140px;
+    animation-delay: -5s;
 }
 
 .signin-panel {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 70px 48px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 70px 48px;
 }
 
 .signin-content {
-  width: 100%;
-  max-width: 360px;
+    width: 100%;
+    max-width: 360px;
 }
 
 .welcome-symbol {
-  display: inline-block;
-  margin-bottom: 26px;
-  font-size: 46px;
-  line-height: 1;
-  color: #467a68;
+    display: inline-block;
+    margin-bottom: 26px;
+    font-size: 46px;
+    line-height: 1;
+    color: #467a68;
 }
 
 .signin-eyebrow {
-  color: #657d76;
+    color: #657d76;
 }
 
 .signin-content h2 {
-  margin: 14px 0;
-  font-size: 42px;
-  font-weight: 600;
-  letter-spacing: -2px;
+    margin: 14px 0;
+    font-size: 42px;
+    font-weight: 600;
+    letter-spacing: -2px;
 }
 
 .signin-description {
-  color: #74837e;
-  font-size: 14px;
-  margin-bottom: 36px;
+    color: #74837e;
+    font-size: 14px;
+    margin-bottom: 36px;
 }
 
 .signin-content .form-label {
-  font-size: 12px;
-  font-weight: 650;
+    font-size: 12px;
+    font-weight: 650;
 }
 
 .signin-content .form-control {
-  padding: 15px;
-  border: 1px solid #d9e0d8;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 14px;
+    padding: 15px;
+    border: 1px solid #d9e0d8;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
 }
 
 .signin-content .form-control:focus {
-  border-color: #467a68;
-  box-shadow: 0 0 0 3px #467a681a;
+    border-color: #467a68;
+    box-shadow: 0 0 0 3px #467a681a;
 }
 
 .signin-content .form-control::placeholder {
-  color: #929e97;
+    color: #929e97;
 }
 
 .signin-button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 16px 20px;
-  border: 0;
-  border-radius: 10px;
-  background: #183b44;
-  color: #f5fff0;
-  font-size: 14px;
-  font-weight: 600;
-  transition: background .2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 16px 20px;
+    border: 0;
+    border-radius: 10px;
+    background: #183b44;
+    color: #f5fff0;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
 }
 
 .signin-button:hover {
-  background: #285b63;
+    background: #285b63;
 }
 
 .signin-button:focus-visible {
-  outline: 3px solid #467a68;
-  outline-offset: 3px;
+    outline: 3px solid #467a68;
+    outline-offset: 3px;
 }
 
 .signin-button span {
-  font-size: 21px;
+    font-size: 21px;
 }
 
 .signin-note {
-  margin-top: 26px;
-  color: #788780;
-  font-size: 12px;
-  text-align: center;
+    margin-top: 26px;
+    color: #788780;
+    font-size: 12px;
+    text-align: center;
 }
 
 .form-message {
-  margin-top: 16px;
-  font-size: 13px;
+    margin-top: 16px;
+    font-size: 13px;
 }
 
 .signin-footer {
-  position: absolute;
-  bottom: 28px;
-  color: #87938c;
-  font-size: 11px;
-  letter-spacing: .5px;
+    position: absolute;
+    bottom: 28px;
+    color: #87938c;
+    font-size: 11px;
+    letter-spacing: 0.5px;
 }
 
 @keyframes sway {
-  from {
-    transform: rotate(-3deg);
-  }
+    from {
+        transform: rotate(-3deg);
+    }
 
-  to {
-    transform: rotate(3deg);
-  }
+    to {
+        transform: rotate(3deg);
+    }
 }
 
 @media (max-width: 991px) {
-  .story-panel {
-    padding: 30px;
-  }
+    .story-panel {
+        padding: 30px;
+    }
 
-  .story-copy h1 {
-    letter-spacing: -2px;
-  }
+    .story-copy h1 {
+        letter-spacing: -2px;
+    }
 
-  .chimes {
-    right: -40px;
-    opacity: .6;
-  }
+    .chimes {
+        right: -40px;
+        opacity: 0.6;
+    }
 
-  .signin-panel {
-    padding: 60px 28px;
-  }
+    .signin-panel {
+        padding: 60px 28px;
+    }
 }
 
 @media (max-width: 767px) {
-  .windchime-auth {
-    grid-template-columns: 1fr;
-  }
+    .windchime-auth {
+        grid-template-columns: 1fr;
+    }
 
-  .story-panel {
-    min-height: auto;
-    padding: 24px;
-  }
+    .story-panel {
+        min-height: auto;
+        padding: 24px;
+    }
 
-  .story-copy {
-    padding: 60px 0 24px;
-  }
+    .story-copy {
+        padding: 60px 0 24px;
+    }
 
-  .story-copy h1 {
-    font-size: 46px;
-  }
+    .story-copy h1 {
+        font-size: 46px;
+    }
 
-  .story-description {
-    max-width: 290px;
-  }
+    .story-description {
+        max-width: 290px;
+    }
 
-  .chimes {
-    right: -55px;
-    top: -30px;
-    opacity: .35;
-  }
+    .chimes {
+        right: -55px;
+        top: -30px;
+        opacity: 0.35;
+    }
 
-  .story-footer {
-    display: none;
-  }
+    .story-footer {
+        display: none;
+    }
 
-  .signin-panel {
-    padding: 40px 24px 70px;
-  }
+    .signin-panel {
+        padding: 40px 24px 70px;
+    }
 
-  .welcome-symbol {
-    display: none;
-  }
+    .welcome-symbol {
+        display: none;
+    }
 
-  .signin-content h2 {
-    font-size: 34px;
-  }
+    .signin-content h2 {
+        font-size: 34px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chime {
-    animation: none;
-  }
+    .chime {
+        animation: none;
+    }
 }
 
 .signin-divider {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 26px 0;
-  color: #788780;
-  font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 26px 0;
+    color: #788780;
+    font-size: 11px;
 }
 
 .signin-divider::before,
 .signin-divider::after {
-  content: "";
-  height: 1px;
-  flex: 1;
-  background: #dfe5dd;
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: #dfe5dd;
 }
 
 .provider-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
 }
 
 .provider-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 96px;
-  padding: 16px 10px;
-  border: 1px solid #d9e0d8;
-  border-radius: 14px;
-  background: #fff;
-  color: #263e39;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .2s, border-color .2s, transform .2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 96px;
+    padding: 16px 10px;
+    border: 1px solid #d9e0d8;
+    border-radius: 14px;
+    background: #fff;
+    color: #263e39;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        transform 0.2s;
 }
 
 .provider-button:hover {
-  background: #edf2eb;
-  border-color: #9aad9e;
-  transform: translateY(-2px);
+    background: #edf2eb;
+    border-color: #9aad9e;
+    transform: translateY(-2px);
 }
 
 .provider-button:focus-visible {
-  outline: 3px solid #467a68;
-  outline-offset: 3px;
+    outline: 3px solid #467a68;
+    outline-offset: 3px;
 }
 
 .provider-button svg {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .provider-button {
-    transition: none;
-  }
+    .provider-button {
+        transition: none;
+    }
 
-  .provider-button:hover {
-    transform: none;
-  }
+    .provider-button:hover {
+        transform: none;
+    }
 }
 
 .signin-button:disabled {
-  opacity: .65;
-  cursor: not-allowed;
+    opacity: 0.65;
+    cursor: not-allowed;
 }
 
 .signed-in-page {
-  min-height: 100svh;
-  background: #f8f9f6;
-  color: #172f35;
+    min-height: 100svh;
+    background: #f8f9f6;
+    color: #172f35;
 }
 
 .signed-in-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px clamp(24px, 5vw, 72px);
-  border-bottom: 1px solid #d9e0d8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 24px clamp(24px, 5vw, 72px);
+    border-bottom: 1px solid #d9e0d8;
 }
 
 .signed-in-header .wordmark {
-  color: #183b44;
+    color: #183b44;
 }
 
 .signed-in-header .wordmark span {
-  color: #467a68;
+    color: #467a68;
 }
 
 .signed-in-content {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 72px 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 72px 24px;
 }
 
 .signed-in-content h1 {
-  font-size: clamp(30px, 5vw, 48px);
-  letter-spacing: -1.5px;
+    font-size: clamp(30px, 5vw, 48px);
+    letter-spacing: -1.5px;
 }
 
 .session-screen {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 24px;
-  text-align: center;
-  background: #f8f9f6;
-  color: #183b44;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 24px;
+    text-align: center;
+    background: #f8f9f6;
+    color: #183b44;
 }
 .signin-wordmark {
-  display: inline-flex;
-  align-items: center;
+    display: inline-flex;
+    align-items: center;
 }
 .signin-wordmark img {
-  display: block;
-  width: 236px;
-  max-width: 100%;
-  height: auto;
+    display: block;
+    width: 236px;
+    max-width: 100%;
+    height: auto;
 }
 @media (max-width: 767px) {
-  .signin-wordmark img { width: 200px; }
+    .signin-wordmark img {
+        width: 200px;
+    }
 }

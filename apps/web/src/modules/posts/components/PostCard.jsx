@@ -4,7 +4,6 @@ import SharePostDialog from './SharePostDialog.jsx';
 import Icon from '../../../shared/components/Icon.jsx';
 import Avatar from '../../profiles/Avatar.js';
 
-
 import PostMediaView from '../Media.js';
 import ReactionIcon from '../../reactions/Icon.js';
 import { REACTIONS } from '../../reactions/types.js';
@@ -12,21 +11,12 @@ import ReactionsDialog from '../../reactions/Dialog.js';
 import RelativeTime from '../../../shared/components/RelativeTime.jsx';
 import { useEffect, useRef, useState } from 'react';
 
-
-import {
-    getReactionSummary,
-    setReaction,
-    removeReaction,
-} from '../../reactions/api/index.js';
-import {
-    getRepostSummary,
-    addRepost,
-    undoRepost,
-} from '../api/index.js';
+import { getReactionSummary, setReaction, removeReaction } from '../../reactions/api/index.js';
+import { getRepostSummary, addRepost, undoRepost } from '../api/index.js';
 import { getCommentSummary } from '../../comments/api/index.js';
 import CommentsPanel from '../../comments/index.js';
 
-
+// Displays one post and coordinates its reactions, comments, reposts, and edit actions.
 export default function PostCard({ post, currentUser, token, onUpdated, onDeleted }) {
     const [reaction, setMyReaction] = useState(null);
     const [reactionLoading, setReactionLoading] = useState(true);
@@ -77,9 +67,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
     const characters = Array.from(post.content || '');
     const longText = characters.length > 280;
     const preview = longText ? characters.slice(0, 280).join('').trimEnd() + '…' : post.content;
-    const selectedReaction = REACTIONS.find(
-        item => item.type === reaction?.type
-    );
+    const selectedReaction = REACTIONS.find((item) => item.type === reaction?.type);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -89,9 +77,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
             setRepostError('');
 
             try {
-                const result = await getRepostSummary(
-                    token, post.id, controller.signal
-                );
+                const result = await getRepostSummary(token, post.id, controller.signal);
                 if (!controller.signal.aborted) setRepost(result);
             } catch (error) {
                 if (!controller.signal.aborted) {
@@ -109,14 +95,13 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
     useEffect(() => {
         const controller = new AbortController();
 
+        // Refresh the current viewer’s reaction whenever this post changes.
         async function loadReaction() {
             setReactionLoading(true);
             setReactionError('');
 
             try {
-                const saved = await getReactionSummary(
-                    token, post.id, controller.signal
-                );
+                const saved = await getReactionSummary(token, post.id, controller.signal);
 
                 if (!controller.signal.aborted) {
                     setMyReaction(saved.my_reaction);
@@ -125,7 +110,6 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                         total: saved.total,
                     });
                 }
-
             } catch (error) {
                 if (!controller.signal.aborted) {
                     setReactionError(error.message || 'Unable to load reaction');
@@ -140,7 +124,6 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
     }, [token, post.id]);
 
     useEffect(() => {
-
         const controller = new AbortController();
 
         async function load() {
@@ -148,9 +131,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
             setCommentsError('');
 
             try {
-                const result = await getCommentSummary(
-                    token, post.id, controller.signal
-                );
+                const result = await getCommentSummary(token, post.id, controller.signal);
 
                 if (!controller.signal.aborted) {
                     setCommentTotal(result.total);
@@ -178,9 +159,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
         try {
             await setReaction(token, post.id, type);
 
-            const saved = await getReactionSummary(
-                token, post.id, AbortSignal.timeout(10000)
-            );
+            const saved = await getReactionSummary(token, post.id, AbortSignal.timeout(10000));
 
             setMyReaction(saved.my_reaction);
             setSummary({
@@ -188,9 +167,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                 total: saved.total,
             });
         } catch {
-            setReactionError(
-                'Could not confirm the latest reactions. Reload before retrying.'
-            );
+            setReactionError('Could not confirm the latest reactions. Reload before retrying.');
         } finally {
             mutationPending.current = false;
             setReactionBusy(false);
@@ -198,7 +175,14 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
     }
 
     async function clearReaction() {
-        if (reactionLoading || reactionBusy || reactionError || !reaction || mutationPending.current) return;
+        if (
+            reactionLoading ||
+            reactionBusy ||
+            reactionError ||
+            !reaction ||
+            mutationPending.current
+        )
+            return;
         mutationPending.current = true;
 
         setReactionBusy(true);
@@ -207,9 +191,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
         try {
             await removeReaction(token, post.id);
 
-            const saved = await getReactionSummary(
-                token, post.id, AbortSignal.timeout(10000)
-            );
+            const saved = await getReactionSummary(token, post.id, AbortSignal.timeout(10000));
 
             setMyReaction(saved.my_reaction);
             setSummary({ counts: saved.counts, total: saved.total });
@@ -226,8 +208,16 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
         holdTimer.current = null;
     }
 
+    // Long-press opens reactions on touch; movement cancels it so swipes still work.
     function startHold(event) {
-        if (!event.isPrimary || event.button !== 0 || reactionBusy || reactionLoading || reactionError) return;
+        if (
+            !event.isPrimary ||
+            event.button !== 0 ||
+            reactionBusy ||
+            reactionLoading ||
+            reactionError
+        )
+            return;
         stopHold();
         held.current = false;
         pointerStart.current = { x: event.clientX, y: event.clientY };
@@ -247,8 +237,14 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
 
     function clickReaction() {
         stopHold();
-        if (held.current) { held.current = false; return; }
-        if (pickerOpen) { setPickerOpen(false); return; }
+        if (held.current) {
+            held.current = false;
+            return;
+        }
+        if (pickerOpen) {
+            setPickerOpen(false);
+            return;
+        }
         if (reaction) clearReaction();
         else chooseReaction('like');
     }
@@ -268,9 +264,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                 await addRepost(token, post.id);
             }
 
-            const result = await getRepostSummary(
-                token, post.id, AbortSignal.timeout(10000)
-            );
+            const result = await getRepostSummary(token, post.id, AbortSignal.timeout(10000));
 
             setRepost(result);
         } catch {
@@ -286,21 +280,44 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
             <header className="wc-post-header">
                 <Avatar name={post.name} tone={post.tone} id={post.creator_id} token={token} />
                 <div>
-                    <ProfileLink className="wc-author-link" username={post.username}><strong>{post.name}</strong></ProfileLink>
-                    <p>{post.username ? `@${post.username}` : 'Account unavailable'} <span>· <RelativeTime value={post.created_at} /></span></p>
+                    <ProfileLink className="wc-author-link" username={post.username}>
+                        <strong>{post.name}</strong>
+                    </ProfileLink>
+                    <p>
+                        {post.username ? `@${post.username}` : 'Account unavailable'}{' '}
+                        <span>
+                            · <RelativeTime value={post.created_at} />
+                        </span>
+                    </p>
                 </div>
-                <PostOptions post={post} currentUser={currentUser} token={token} onSaved={onUpdated} onDeleted={onDeleted} onSeeAllReactions={setReactorsOpen} />
+                <PostOptions
+                    post={post}
+                    currentUser={currentUser}
+                    token={token}
+                    onSaved={onUpdated}
+                    onDeleted={onDeleted}
+                    onSeeAllReactions={setReactorsOpen}
+                />
             </header>
 
             <div className="wc-post-content">
-                <span className="wc-topic">{post.kind === 'reel' ? 'REEL' : post.topic || 'A SHARED MOMENT'}</span>
+                <span className="wc-topic">
+                    {post.kind === 'reel' ? 'REEL' : post.topic || 'A SHARED MOMENT'}
+                </span>
                 <PostMediaView post={post} token={token} />
                 {post.content && <p>{preview}</p>}
-                {longText && <button type="button" className="wc-view-more" onClick={() => setExpanded(true)}>View more</button>}
+                {longText && (
+                    <button
+                        type="button"
+                        className="wc-view-more"
+                        onClick={() => setExpanded(true)}
+                    >
+                        View more
+                    </button>
+                )}
             </div>
 
             <footer className="wc-post-actions">
-                
                 <div className="wc-reaction-control" ref={reactionControl}>
                     <button
                         aria-expanded={pickerOpen}
@@ -310,25 +327,40 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                         onPointerDown={startHold}
                         onPointerMove={moveHold}
                         onPointerUp={stopHold}
-                        onPointerCancel={() => { stopHold(); held.current = true; }}
+                        onPointerCancel={() => {
+                            stopHold();
+                            held.current = true;
+                        }}
                         onPointerLeave={stopHold}
-                        onContextMenu={event => event.preventDefault()}
-                        onKeyDown={event => {
+                        onContextMenu={(event) => event.preventDefault()}
+                        onKeyDown={(event) => {
                             if (event.key === 'ArrowDown') {
                                 event.preventDefault();
                                 setPickerOpen(true);
-                                requestAnimationFrame(() => reactionControl.current?.querySelector('.wc-reaction-options button')?.focus());
+                                requestAnimationFrame(() =>
+                                    reactionControl.current
+                                        ?.querySelector('.wc-reaction-options button')
+                                        ?.focus(),
+                                );
                             }
                         }}
                         title="Click to like or remove your reaction. Hold to choose."
-                        aria-label={reaction ? 'Remove your reaction; hold or press Down Arrow to choose another' : 'Like this post; hold or press Down Arrow to choose a reaction'}
+                        aria-label={
+                            reaction
+                                ? 'Remove your reaction; hold or press Down Arrow to choose another'
+                                : 'Like this post; hold or press Down Arrow to choose a reaction'
+                        }
                         onClick={clickReaction}
                     >
                         <span aria-hidden="true">
-                            <ReactionIcon name={selectedReaction?.icon || 'like'} size={20} colored={Boolean(selectedReaction)} />
+                            <ReactionIcon
+                                name={selectedReaction?.icon || 'like'}
+                                size={20}
+                                colored={Boolean(selectedReaction)}
+                            />
                         </span>
                         <span>
-                            { summary.total }
+                            {summary.total}
                             {/* {reactionLoading ? 'Loading…' : reactionBusy ? 'Saving…' : selectedReaction?.label || 'Like'} */}
                         </span>
                     </button>
@@ -340,7 +372,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                             aria-label="Choose a reaction"
                         >
                             <div className="wc-reaction-options">
-                                {REACTIONS.map(item => (
+                                {REACTIONS.map((item) => (
                                     <button
                                         key={item.type}
                                         type="button"
@@ -351,12 +383,12 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                                         onClick={() => chooseReaction(item.type)}
                                     >
                                         <ReactionIcon name={item.icon} size={28} colored />
-                                        <small className="wc-picker-count">{summary.counts[item.type] || 0}</small>
+                                        <small className="wc-picker-count">
+                                            {summary.counts[item.type] || 0}
+                                        </small>
                                     </button>
                                 ))}
                             </div>
-
-
                         </div>
                     )}
                 </div>
@@ -370,19 +402,30 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                     disabled={repostLoading || repostBusy || Boolean(repostError)}
                     onClick={toggleRepost}
                 >
-                    <Icon name="reshare" size={20} />{repost.total}
+                    <Icon name="reshare" size={20} />
+                    {repost.total}
                 </button>
 
-                <button type="button" aria-expanded={expanded}
-                    aria-label="View comments" aria-haspopup="dialog"
+                <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-label="View comments"
+                    aria-haspopup="dialog"
                     title={commentsError || 'View comments'}
-                    onClick={() => setExpanded(value => !value)}>
-                    <Icon name="comment" size={20} /> {commentsLoading ? '…' : commentTotal ?? '—'}
+                    onClick={() => setExpanded((value) => !value)}
+                >
+                    <Icon name="comment" size={20} />{' '}
+                    {commentsLoading ? '…' : (commentTotal ?? '—')}
                 </button>
 
-                <button type="button" aria-label="Send this post in a message"
-                    title="Send in a message" aria-haspopup="dialog" aria-expanded={sharing}
-                    onClick={() => setSharing(true)}>
+                <button
+                    type="button"
+                    aria-label="Send this post in a message"
+                    title="Send in a message"
+                    aria-haspopup="dialog"
+                    aria-expanded={sharing}
+                    onClick={() => setSharing(true)}
+                >
                     <Icon name="send" size={20} />
                 </button>
 
@@ -390,20 +433,37 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
             </footer>
 
             {reactionError && (
-                <p className="wc-notice mx-3 mt-3" role="alert">{reactionError}</p>
+                <p className="wc-notice mx-3 mt-3" role="alert">
+                    {reactionError}
+                </p>
             )}
 
             {repostError && (
-                <p className="wc-notice mx-3 mt-3" role="alert">{repostError}</p>
+                <p className="wc-notice mx-3 mt-3" role="alert">
+                    {repostError}
+                </p>
             )}
 
             {expanded && (
-                <CommentsPanel post={post} token={token} currentUser={currentUser}
-                    onClose={() => setExpanded(false)} onCountChange={setCommentTotal} reactionSummary={summary} />
+                <CommentsPanel
+                    post={post}
+                    token={token}
+                    currentUser={currentUser}
+                    onClose={() => setExpanded(false)}
+                    onCountChange={setCommentTotal}
+                    reactionSummary={summary}
+                />
             )}
-            {reactorsOpen && <ReactionsDialog token={token} postId={post.id} onClose={() => setReactorsOpen(false)} />}
-            {sharing && <SharePostDialog post={post} token={token} onClose={() => setSharing(false)} />}
+            {reactorsOpen && (
+                <ReactionsDialog
+                    token={token}
+                    postId={post.id}
+                    onClose={() => setReactorsOpen(false)}
+                />
+            )}
+            {sharing && (
+                <SharePostDialog post={post} token={token} onClose={() => setSharing(false)} />
+            )}
         </article>
     );
 }
-

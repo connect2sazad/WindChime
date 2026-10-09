@@ -1,3 +1,235 @@
-.wc-safety-page{max-width:850px;padding:125px 24px 110px;margin:auto;color:#183b44}.wc-safety-page h1{font-size:34px;margin:14px 0}.wc-safety-page>p{font-size:13px;line-height:1.7;color:#71837a}.wc-safety-page button,.wc-account-safety button,.wc-safety-dialog button{border:1px solid #dce5d3;background:#f7faf2;color:#183b44;border-radius:10px;padding:10px 14px;font-size:12px;cursor:pointer;min-height:42px}.wc-safety-page button:disabled,.wc-account-safety button:disabled,.wc-safety-dialog button:disabled{opacity:.5;cursor:default}.wc-safety-page button:focus-visible,.wc-safety-dialog button:focus-visible{outline:3px solid #467a68;outline-offset:2px}.wc-account-safety{display:flex;flex-wrap:wrap;gap:8px;position:relative}.wc-block-confirm{flex:0 0 100%;background:#fff;border:1px solid #dce5d3;border-radius:14px;padding:16px;max-width:400px}.wc-block-confirm p{font-size:12px;line-height:1.6}.wc-block-confirm button{margin-right:8px}.wc-safety-dialog{width:min(480px,calc(100vw - 28px));max-height:90svh;overflow:auto;border:1px solid #dce5d3;border-radius:20px;padding:0;background:white;color:#183b44}.wc-safety-dialog::backdrop{background:#102a3399;backdrop-filter:blur(5px)}.wc-safety-dialog header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #e9eee3}.wc-safety-dialog h2{font-size:22px;margin:0}.wc-safety-dialog form,.wc-safety-dialog section{padding:22px}.wc-safety-dialog p{font-size:13px;line-height:1.6}.wc-safety-dialog label,.wc-moderation-report label{display:block;font-size:12px;margin:14px 0 8px}.wc-safety-dialog select,.wc-safety-dialog textarea,.wc-moderation-report select,.wc-moderation-report textarea{display:block;width:100%;padding:12px;border:1px solid #dce5d3;border-radius:10px;background:#fbfcf8;color:#183b44;font-size:13px}.wc-safety-dialog .wc-safety-checkbox{display:flex;align-items:center;gap:10px}.wc-safety-dialog footer,.wc-safety-page>footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:20px}.wc-safety-note{background:#eff5e7;padding:12px;border-radius:10px}.wc-safety-dialog [role=alert],.wc-safety-page [role=alert]{color:#9b3e4d}.wc-blocked-row{display:flex;align-items:center;gap:12px;background:white;border:1px solid #dce5d3;border-radius:16px;padding:18px;margin:12px 0}.wc-blocked-row>span:not(.wc-avatar){flex:1}.wc-blocked-row small{display:block;font-size:11px;color:#71837a;margin-top:4px}.wc-moderation-report{background:white;border:1px solid #dce5d3;border-radius:16px;padding:20px;margin:16px 0;font-size:13px}.wc-moderation-report header{display:flex;justify-content:space-between;gap:12px}.wc-moderation-report blockquote{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f8ef;border-radius:12px;padding:16px}.wc-moderation-report small{display:block}.wc-moderation-report textarea{min-height:90px}.wc-moderation-report form{margin-bottom:14px}.wc-moderation-filters{display:flex;gap:8px;flex-wrap:wrap}.wc-moderation-filters button[aria-pressed=true]{background:#183b44;color:white}@media(max-width:767px){.wc-safety-page{padding:100px 14px 100px}}
+/* Account safety controls, report dialogs, and moderation queue styles. */
+.wc-safety-page {
+    max-width: 850px;
+    padding: 125px 24px 110px;
+    margin: auto;
+    color: #183b44;
+}
+.wc-safety-page h1 {
+    font-size: 34px;
+    margin: 14px 0;
+}
+.wc-safety-page > p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #71837a;
+}
+.wc-safety-page button,
+.wc-account-safety button,
+.wc-safety-dialog button {
+    border: 1px solid #dce5d3;
+    background: #f7faf2;
+    color: #183b44;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    min-height: 42px;
+}
+.wc-safety-page button:disabled,
+.wc-account-safety button:disabled,
+.wc-safety-dialog button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.wc-safety-page button:focus-visible,
+.wc-safety-dialog button:focus-visible {
+    outline: 3px solid #467a68;
+    outline-offset: 2px;
+}
+.wc-account-safety {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    position: relative;
+}
+.wc-block-confirm {
+    flex: 0 0 100%;
+    background: #fff;
+    border: 1px solid #dce5d3;
+    border-radius: 14px;
+    padding: 16px;
+    max-width: 400px;
+}
+.wc-block-confirm p {
+    font-size: 12px;
+    line-height: 1.6;
+}
+.wc-block-confirm button {
+    margin-right: 8px;
+}
+.wc-safety-dialog {
+    width: min(480px, calc(100vw - 28px));
+    max-height: 90svh;
+    overflow: auto;
+    border: 1px solid #dce5d3;
+    border-radius: 20px;
+    padding: 0;
+    background: white;
+    color: #183b44;
+}
+.wc-safety-dialog::backdrop {
+    background: #102a3399;
+    backdrop-filter: blur(5px);
+}
+.wc-safety-dialog header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid #e9eee3;
+}
+.wc-safety-dialog h2 {
+    font-size: 22px;
+    margin: 0;
+}
+.wc-safety-dialog form,
+.wc-safety-dialog section {
+    padding: 22px;
+}
+.wc-safety-dialog p {
+    font-size: 13px;
+    line-height: 1.6;
+}
+.wc-safety-dialog label,
+.wc-moderation-report label {
+    display: block;
+    font-size: 12px;
+    margin: 14px 0 8px;
+}
+.wc-safety-dialog select,
+.wc-safety-dialog textarea,
+.wc-moderation-report select,
+.wc-moderation-report textarea {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #dce5d3;
+    border-radius: 10px;
+    background: #fbfcf8;
+    color: #183b44;
+    font-size: 13px;
+}
+.wc-safety-dialog .wc-safety-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.wc-safety-dialog footer,
+.wc-safety-page > footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+.wc-safety-note {
+    background: #eff5e7;
+    padding: 12px;
+    border-radius: 10px;
+}
+.wc-safety-dialog [role='alert'],
+.wc-safety-page [role='alert'] {
+    color: #9b3e4d;
+}
+.wc-blocked-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: 1px solid #dce5d3;
+    border-radius: 16px;
+    padding: 18px;
+    margin: 12px 0;
+}
+.wc-blocked-row > span:not(.wc-avatar) {
+    flex: 1;
+}
+.wc-blocked-row small {
+    display: block;
+    font-size: 11px;
+    color: #71837a;
+    margin-top: 4px;
+}
+.wc-moderation-report {
+    background: white;
+    border: 1px solid #dce5d3;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 16px 0;
+    font-size: 13px;
+}
+.wc-moderation-report header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+.wc-moderation-report blockquote {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: #f5f8ef;
+    border-radius: 12px;
+    padding: 16px;
+}
+.wc-moderation-report small {
+    display: block;
+}
+.wc-moderation-report textarea {
+    min-height: 90px;
+}
+.wc-moderation-report form {
+    margin-bottom: 14px;
+}
+.wc-moderation-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.wc-moderation-filters button[aria-pressed='true'] {
+    background: #183b44;
+    color: white;
+}
+@media (max-width: 767px) {
+    .wc-safety-page {
+        padding: 100px 14px 100px;
+    }
+}
 
-.wc-report-media-dialog{width:min(1100px,95vw);height:90svh;border:0;border-radius:18px;background:#102a33;color:white;padding:20px;overflow:auto}.wc-report-media-dialog::backdrop{background:#071a24cc}.wc-report-media-dialog>button{display:block;margin-left:auto;background:#eff5e7;color:#183b44;border:0;border-radius:10px;width:42px;height:42px;font-size:24px;margin-bottom:10px}.wc-report-media-dialog img{display:block;max-width:100%;max-height:calc(90svh - 95px);object-fit:contain;margin:auto}.wc-report-media-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.wc-report-media-dialog {
+    width: min(1100px, 95vw);
+    height: 90svh;
+    border: 0;
+    border-radius: 18px;
+    background: #102a33;
+    color: white;
+    padding: 20px;
+    overflow: auto;
+}
+.wc-report-media-dialog::backdrop {
+    background: #071a24cc;
+}
+.wc-report-media-dialog > button {
+    display: block;
+    margin-left: auto;
+    background: #eff5e7;
+    color: #183b44;
+    border: 0;
+    border-radius: 10px;
+    width: 42px;
+    height: 42px;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+.wc-report-media-dialog img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(90svh - 95px);
+    object-fit: contain;
+    margin: auto;
+}
+.wc-report-media-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}

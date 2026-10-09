@@ -1,1 +1,154 @@
-.wc-post-options-trigger{margin-left:auto;border:0;background:transparent;color:#73877b;min-width:44px;min-height:44px;border-radius:50%;font-size:17px;letter-spacing:2px}.wc-post-options-trigger:hover{background:#edf3e7;color:#183b44}.wc-post-options{width:200px}.wc-post-options a{display:block;padding:12px 14px;color:#183b44;text-decoration:none;font-size:12px;border-radius:8px}.wc-post-options a:hover{background:#edf3e7}.wc-post-dialog{width:min(520px,calc(100vw - 28px));max-height:calc(100svh - 40px);border:1px solid #dce6d3;border-radius:22px;padding:0;color:#183b44;background:#fff;box-shadow:0 24px 90px #102f4430;overflow:auto}.wc-post-dialog::backdrop{background:#0e303c70;backdrop-filter:blur(4px)}.wc-post-dialog header{display:flex;justify-content:space-between;align-items:center;padding:22px 24px;border-bottom:1px solid #edf1e8}.wc-post-dialog h2{font-size:21px;letter-spacing:-.5px;margin:0}.wc-post-dialog header button{border:0;border-radius:50%;width:40px;height:40px;background:#f2f6ec;color:#54765b;font-size:25px}.wc-post-dialog form{padding:24px}.wc-post-dialog form>p{font-size:13px;line-height:1.7;color:#71837a}.wc-post-dialog label{display:block;font-size:12px;font-weight:600;margin-bottom:10px}.wc-post-dialog textarea{width:100%;border:1px solid #dce5d3;border-radius:12px;padding:14px;color:#183b44;font-size:14px;line-height:1.6;resize:vertical;background:#fcfdf9}.wc-caption-help{display:flex;justify-content:space-between;gap:16px;font-size:10px;color:#809085;margin:10px 0}.wc-post-dialog footer{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.wc-post-dialog footer button{border:0;border-radius:12px;min-height:44px;padding:12px 20px;font-size:12px;background:#183b44;color:white}.wc-post-dialog footer .secondary{background:#eff3e9;color:#5b7863}.wc-post-dialog footer .danger{background:#ad4656}.wc-post-dialog button:disabled{opacity:.45;cursor:default}.wc-delete-preview{background:#f5f7f1;border:1px solid #e4eadc;border-radius:12px;padding:14px;font-size:13px;white-space:pre-wrap;max-height:160px;overflow:auto}.wc-delete-preview small{display:block;color:#809085;margin-top:8px}.wc-post-mutation-error{background:#faeded;color:#a15c64!important;padding:12px;border-radius:10px}.wc-post-dialog button{cursor:pointer}.wc-post-dialog button:focus-visible,.wc-post-dialog textarea:focus-visible{outline:3px solid #467a68;outline-offset:3px}
+/* Styles for post menus, editing, and confirmation dialogs. */
+.wc-post-options-trigger {
+    margin-left: auto;
+    border: 0;
+    background: transparent;
+    color: #73877b;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+    font-size: 17px;
+    letter-spacing: 2px;
+}
+.wc-post-options-trigger:hover {
+    background: #edf3e7;
+    color: #183b44;
+}
+.wc-post-options {
+    width: 200px;
+}
+.wc-post-options a {
+    display: block;
+    padding: 12px 14px;
+    color: #183b44;
+    text-decoration: none;
+    font-size: 12px;
+    border-radius: 8px;
+}
+.wc-post-options a:hover {
+    background: #edf3e7;
+}
+.wc-post-dialog {
+    width: min(520px, calc(100vw - 28px));
+    max-height: calc(100svh - 40px);
+    border: 1px solid #dce6d3;
+    border-radius: 22px;
+    padding: 0;
+    color: #183b44;
+    background: #fff;
+    box-shadow: 0 24px 90px #102f4430;
+    overflow: auto;
+}
+.wc-post-dialog::backdrop {
+    background: #0e303c70;
+    backdrop-filter: blur(4px);
+}
+.wc-post-dialog header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 22px 24px;
+    border-bottom: 1px solid #edf1e8;
+}
+.wc-post-dialog h2 {
+    font-size: 21px;
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+.wc-post-dialog header button {
+    border: 0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    background: #f2f6ec;
+    color: #54765b;
+    font-size: 25px;
+}
+.wc-post-dialog form {
+    padding: 24px;
+}
+.wc-post-dialog form > p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #71837a;
+}
+.wc-post-dialog label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.wc-post-dialog textarea {
+    width: 100%;
+    border: 1px solid #dce5d3;
+    border-radius: 12px;
+    padding: 14px;
+    color: #183b44;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    background: #fcfdf9;
+}
+.wc-caption-help {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 10px;
+    color: #809085;
+    margin: 10px 0;
+}
+.wc-post-dialog footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+.wc-post-dialog footer button {
+    border: 0;
+    border-radius: 12px;
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 12px;
+    background: #183b44;
+    color: white;
+}
+.wc-post-dialog footer .secondary {
+    background: #eff3e9;
+    color: #5b7863;
+}
+.wc-post-dialog footer .danger {
+    background: #ad4656;
+}
+.wc-post-dialog button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+.wc-delete-preview {
+    background: #f5f7f1;
+    border: 1px solid #e4eadc;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 160px;
+    overflow: auto;
+}
+.wc-delete-preview small {
+    display: block;
+    color: #809085;
+    margin-top: 8px;
+}
+.wc-post-mutation-error {
+    background: #faeded;
+    color: #a15c64 !important;
+    padding: 12px;
+    border-radius: 10px;
+}
+.wc-post-dialog button {
+    cursor: pointer;
+}
+.wc-post-dialog button:focus-visible,
+.wc-post-dialog textarea:focus-visible {
+    outline: 3px solid #467a68;
+    outline-offset: 3px;
+}

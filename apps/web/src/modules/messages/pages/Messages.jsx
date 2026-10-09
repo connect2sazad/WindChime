@@ -1,37 +1,336 @@
-
-
-
-import { useCallback,useEffect,useRef,useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getConversations, startConversation } from '../api/index.js';
 import { listConnections } from '../../connections/api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 import Avatar from '../../profiles/Avatar.js';
 
-
 import RelativeTime from '../../../shared/components/RelativeTime.jsx';
 
-export default function Messages({session}){
- const [params,setParams]=useSearchParams();const selected=Number(params.get('conversation'));const recipient=Number(params.get('with'));
- const [query,setQuery]=useState('');const [search,setSearch]=useState('');
- const [inbox,setInbox]=useState([]);const [inboxPage,setInboxPage]=useState(1);const [inboxMore,setInboxMore]=useState(false);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [refresh,setRefresh]=useState(0);
- const [picker,setPicker]=useState(false);const [friends,setFriends]=useState([]);const [friendsPage,setFriendsPage]=useState(1);const [friendsMore,setFriendsMore]=useState(false);const [friendLoading,setFriendLoading]=useState(false);const [friendError,setFriendError]=useState('');const [opening,setOpening]=useState(false);const openPending=useRef(false);const mounted=useRef(true);
- useEffect(()=>{const changed=()=>setRefresh(value=>value+1);window.addEventListener('windchime:safety-changed',changed);return()=>window.removeEventListener('windchime:safety-changed',changed);},[]);
- useEffect(()=>{const timer=setTimeout(()=>{setSearch(query.trim());setInboxPage(1);},350);return()=>clearTimeout(timer);},[query]);
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{const controller=new AbortController();let running=false;async function load(){if(running||document.hidden)return;running=true;try{const result=await getConversations(session.token,inboxPage,controller.signal,search);const rows=await Promise.all(result.data.map(async row=>({...row,user:await getDisplayUser(session.token,row.peer_id,controller.signal)})));if(!controller.signal.aborted){setInbox(previous=>inboxPage===1?rows:[...previous.filter(row=>!rows.some(item=>item.id===row.id)),...rows]);setInboxMore(result.pagination.has_next_page);setError('');}}catch(e){if(!controller.signal.aborted)setError(e.message);}finally{running=false;if(!controller.signal.aborted)setLoading(false);}}load();const timer=setInterval(load,10000);return()=>{controller.abort();clearInterval(timer);};},[session.token,inboxPage,refresh,search]);
- useEffect(()=>{if(!picker)return;const controller=new AbortController();listConnections(session.token,'friends',friendsPage,controller.signal).then(async result=>{const people=await Promise.all(result.data.map(row=>getDisplayUser(session.token,row.user_id,controller.signal)));if(!controller.signal.aborted){setFriends(previous=>friendsPage===1?people:[...previous,...people.filter(user=>!previous.some(item=>item.id===user.id))]);setFriendsMore(result.pagination.has_next_page);setFriendError('');}}).catch(e=>{if(!controller.signal.aborted)setFriendError(e.message);}).finally(()=>{if(!controller.signal.aborted)setFriendLoading(false);});return()=>controller.abort();},[picker,friendsPage,session.token]);
- useEffect(()=>{if(!Number.isSafeInteger(recipient)||recipient<1)return;const controller=new AbortController();startConversation(session.token,recipient,controller.signal).then(row=>{if(!controller.signal.aborted){setParams({conversation:row.id},{replace:true});setRefresh(value=>value+1);}}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});return()=>controller.abort();},[recipient,session.token,setParams]);
- async function openFriend(id){if(openPending.current)return;openPending.current=true;setOpening(true);setFriendError('');try{const row=await startConversation(session.token,id);if(mounted.current){setParams({conversation:row.id});setPicker(false);setRefresh(value=>value+1);}}catch(e){if(mounted.current)setFriendError(e.message);}finally{openPending.current=false;if(mounted.current)setOpening(false);}}
- // Stable callbacks prevent the polling effect from restarting each time the inbox refreshes.
- const refreshed=useRef(0);
- const onRead=useCallback(()=>{if(Date.now()-refreshed.current>5000){refreshed.current=Date.now();setRefresh(value=>value+1);}},[]);
- const onUnavailable=useCallback(()=>setRefresh(value=>value+1),[]);
- return <main className={`wc-messages-page ${selected>0?'has-conversation':''}`}><div className="wc-messages-title"><div><p className="wc-overline">A LITTLE CLOSER</p><h1>Messages</h1></div><button onClick={()=>{setFriendLoading(true);setPicker(value=>!value);setFriendsPage(1);}}>＋ New message</button>{selected>0&&<button className="wc-back-inbox" onClick={()=>setParams({})}>← Inbox</button>}</div><div className="wc-messages-layout"><aside className="wc-inbox" aria-label="Conversations"><label className="wc-conversation-search">Search conversations<input type="search" value={query} maxLength={100} placeholder="Friend’s name or username" onChange={event=>setQuery(event.target.value)}/></label><p className="wc-dm-note">Only accepted friends can message each other.</p>
-  {picker&&<section className="wc-friend-picker"><h2>Choose a friend</h2>{friends.map(user=><button key={user.id} disabled={opening} onClick={()=>openFriend(user.id)}><Avatar name={user.name} id={user.id} token={session.token} small/><span>{user.name}<small>@{user.username}</small></span></button>)}{friendLoading&&<p role="status">Loading friends…</p>}{!friendLoading&&!friends.length&&!friendError&&<p>Accept a friend request to start messaging.</p>}{friendError&&<p role="alert">{friendError}</p>}{friendsMore&&<button disabled={friendLoading} onClick={()=>{setFriendLoading(true);setFriendsPage(value=>value+1);}}>More friends</button>}</section>}
-  {loading&&<p role="status">Loading conversations…</p>}{error&&<div role="alert"><p>{error}</p><button onClick={()=>setRefresh(value=>value+1)}>Retry</button></div>}{!loading&&!error&&!inbox.length&&<p className="wc-inbox-empty">{search?'No matching conversations. Try another name or username.':'No conversations yet. Start with a friend.'}</p>}
-  {inbox.map(row=><button key={row.id} className={`wc-inbox-row ${selected===row.id?'active':''}`} onClick={()=>setParams({conversation:row.id})}><Avatar name={row.user.name} id={row.peer_id} token={session.token}/><span><strong>{row.user.name}</strong><small>{row.last_message?(row.last_message.sender_id===session.user.id?'You: ':'')+(row.last_message.content||(row.last_message.shared_post_id?'Shared a post':row.last_message.attachments?.[0]?.kind==='video'?'Video':'Photo')):'Say hello'}</small></span><div>{row.last_message&&<RelativeTime value={row.last_message.created_at}/>} {row.unread>0&&<b aria-label={`${row.unread} unread messages`}>{row.unread}</b>}</div></button>)}{inboxMore&&<button onClick={()=>setInboxPage(value=>value+1)}>More conversations</button>}
- </aside>{selected>0?<Conversation key={selected} id={selected} session={session} onRead={onRead} onUnavailable={onUnavailable}/>:<section className="wc-chat wc-chat-welcome"><span>✳</span><h2>Your next conversation<br/>starts with a hello.</h2><p>Pick a conversation or start one with a friend.</p><button onClick={()=>{setFriendLoading(true);setPicker(true);}}>Find a friend to message</button></section>}</div></main>;
+// Conversation list and search; selecting a row opens the conversation view.
+export default function Messages({ session }) {
+    const [params, setParams] = useSearchParams();
+    const selected = Number(params.get('conversation'));
+    const recipient = Number(params.get('with'));
+    const [query, setQuery] = useState('');
+    const [search, setSearch] = useState('');
+    const [inbox, setInbox] = useState([]);
+    const [inboxPage, setInboxPage] = useState(1);
+    const [inboxMore, setInboxMore] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [refresh, setRefresh] = useState(0);
+    const [picker, setPicker] = useState(false);
+    const [friends, setFriends] = useState([]);
+    const [friendsPage, setFriendsPage] = useState(1);
+    const [friendsMore, setFriendsMore] = useState(false);
+    const [friendLoading, setFriendLoading] = useState(false);
+    const [friendError, setFriendError] = useState('');
+    const [opening, setOpening] = useState(false);
+    const openPending = useRef(false);
+    const mounted = useRef(true);
+    useEffect(() => {
+        const changed = () => setRefresh((value) => value + 1);
+        window.addEventListener('windchime:safety-changed', changed);
+        return () => window.removeEventListener('windchime:safety-changed', changed);
+    }, []);
+    useEffect(() => {
+        // Debounce search so fast typing does not request every partial query.
+        const timer = setTimeout(() => {
+            setSearch(query.trim());
+            setInboxPage(1);
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [query]);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
+    useEffect(() => {
+        const controller = new AbortController();
+        let running = false;
+        async function load() {
+            // Avoid overlapping polls and pause requests while this browser tab is hidden.
+            if (running || document.hidden) return;
+            running = true;
+            try {
+                const result = await getConversations(
+                    session.token,
+                    inboxPage,
+                    controller.signal,
+                    search,
+                );
+                const rows = await Promise.all(
+                    result.data.map(async (row) => ({
+                        ...row,
+                        user: await getDisplayUser(session.token, row.peer_id, controller.signal),
+                    })),
+                );
+                if (!controller.signal.aborted) {
+                    setInbox((previous) =>
+                        inboxPage === 1
+                            ? rows
+                            : [
+                                  ...previous.filter(
+                                      (row) => !rows.some((item) => item.id === row.id),
+                                  ),
+                                  ...rows,
+                              ],
+                    );
+                    setInboxMore(result.pagination.has_next_page);
+                    setError('');
+                }
+            } catch (e) {
+                if (!controller.signal.aborted) setError(e.message);
+            } finally {
+                running = false;
+                if (!controller.signal.aborted) setLoading(false);
+            }
+        }
+        load();
+        // Refresh the inbox every ten seconds so new conversations appear without a reload.
+        const timer = setInterval(load, 10000);
+        return () => {
+            controller.abort();
+            clearInterval(timer);
+        };
+    }, [session.token, inboxPage, refresh, search]);
+    useEffect(() => {
+        if (!picker) return;
+        const controller = new AbortController();
+        listConnections(session.token, 'friends', friendsPage, controller.signal)
+            .then(async (result) => {
+                const people = await Promise.all(
+                    result.data.map((row) =>
+                        getDisplayUser(session.token, row.user_id, controller.signal),
+                    ),
+                );
+                if (!controller.signal.aborted) {
+                    setFriends((previous) =>
+                        friendsPage === 1
+                            ? people
+                            : [
+                                  ...previous,
+                                  ...people.filter(
+                                      (user) => !previous.some((item) => item.id === user.id),
+                                  ),
+                              ],
+                    );
+                    setFriendsMore(result.pagination.has_next_page);
+                    setFriendError('');
+                }
+            })
+            .catch((e) => {
+                if (!controller.signal.aborted) setFriendError(e.message);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setFriendLoading(false);
+            });
+        return () => controller.abort();
+    }, [picker, friendsPage, session.token]);
+    useEffect(() => {
+        if (!Number.isSafeInteger(recipient) || recipient < 1) return;
+        const controller = new AbortController();
+        startConversation(session.token, recipient, controller.signal)
+            .then((row) => {
+                if (!controller.signal.aborted) {
+                    setParams({ conversation: row.id }, { replace: true });
+                    setRefresh((value) => value + 1);
+                }
+            })
+            .catch((e) => {
+                if (!controller.signal.aborted) setError(e.message);
+            });
+        return () => controller.abort();
+    }, [recipient, session.token, setParams]);
+    async function openFriend(id) {
+        if (openPending.current) return;
+        openPending.current = true;
+        setOpening(true);
+        setFriendError('');
+        try {
+            const row = await startConversation(session.token, id);
+            if (mounted.current) {
+                setParams({ conversation: row.id });
+                setPicker(false);
+                setRefresh((value) => value + 1);
+            }
+        } catch (e) {
+            if (mounted.current) setFriendError(e.message);
+        } finally {
+            openPending.current = false;
+            if (mounted.current) setOpening(false);
+        }
+    }
+    // Stable callbacks prevent the polling effect from restarting each time the inbox refreshes.
+    const refreshed = useRef(0);
+    const onRead = useCallback(() => {
+        if (Date.now() - refreshed.current > 5000) {
+            refreshed.current = Date.now();
+            setRefresh((value) => value + 1);
+        }
+    }, []);
+    const onUnavailable = useCallback(() => setRefresh((value) => value + 1), []);
+    return (
+        <main className={`wc-messages-page ${selected > 0 ? 'has-conversation' : ''}`}>
+            <div className="wc-messages-title">
+                <div>
+                    <p className="wc-overline">A LITTLE CLOSER</p>
+                    <h1>Messages</h1>
+                </div>
+                <button
+                    onClick={() => {
+                        setFriendLoading(true);
+                        setPicker((value) => !value);
+                        setFriendsPage(1);
+                    }}
+                >
+                    ＋ New message
+                </button>
+                {selected > 0 && (
+                    <button className="wc-back-inbox" onClick={() => setParams({})}>
+                        ← Inbox
+                    </button>
+                )}
+            </div>
+            <div className="wc-messages-layout">
+                <aside className="wc-inbox" aria-label="Conversations">
+                    <label className="wc-conversation-search">
+                        Search conversations
+                        <input
+                            type="search"
+                            value={query}
+                            maxLength={100}
+                            placeholder="Friend’s name or username"
+                            onChange={(event) => setQuery(event.target.value)}
+                        />
+                    </label>
+                    <p className="wc-dm-note">Only accepted friends can message each other.</p>
+                    {picker && (
+                        <section className="wc-friend-picker">
+                            <h2>Choose a friend</h2>
+                            {friends.map((user) => (
+                                <button
+                                    key={user.id}
+                                    disabled={opening}
+                                    onClick={() => openFriend(user.id)}
+                                >
+                                    <Avatar
+                                        name={user.name}
+                                        id={user.id}
+                                        token={session.token}
+                                        small
+                                    />
+                                    <span>
+                                        {user.name}
+                                        <small>@{user.username}</small>
+                                    </span>
+                                </button>
+                            ))}
+                            {friendLoading && <p role="status">Loading friends…</p>}
+                            {!friendLoading && !friends.length && !friendError && (
+                                <p>Accept a friend request to start messaging.</p>
+                            )}
+                            {friendError && <p role="alert">{friendError}</p>}
+                            {friendsMore && (
+                                <button
+                                    disabled={friendLoading}
+                                    onClick={() => {
+                                        setFriendLoading(true);
+                                        setFriendsPage((value) => value + 1);
+                                    }}
+                                >
+                                    More friends
+                                </button>
+                            )}
+                        </section>
+                    )}
+                    {loading && <p role="status">Loading conversations…</p>}
+                    {error && (
+                        <div role="alert">
+                            <p>{error}</p>
+                            <button onClick={() => setRefresh((value) => value + 1)}>Retry</button>
+                        </div>
+                    )}
+                    {!loading && !error && !inbox.length && (
+                        <p className="wc-inbox-empty">
+                            {search
+                                ? 'No matching conversations. Try another name or username.'
+                                : 'No conversations yet. Start with a friend.'}
+                        </p>
+                    )}
+                    {inbox.map((row) => (
+                        <button
+                            key={row.id}
+                            className={`wc-inbox-row ${selected === row.id ? 'active' : ''}`}
+                            onClick={() => setParams({ conversation: row.id })}
+                        >
+                            <Avatar name={row.user.name} id={row.peer_id} token={session.token} />
+                            <span>
+                                <strong>{row.user.name}</strong>
+                                <small>
+                                    {row.last_message
+                                        ? (row.last_message.sender_id === session.user.id
+                                              ? 'You: '
+                                              : '') +
+                                          (row.last_message.content ||
+                                              (row.last_message.shared_post_id
+                                                  ? 'Shared a post'
+                                                  : row.last_message.attachments?.[0]?.kind ===
+                                                      'video'
+                                                    ? 'Video'
+                                                    : 'Photo'))
+                                        : 'Say hello'}
+                                </small>
+                            </span>
+                            <div>
+                                {row.last_message && (
+                                    <RelativeTime value={row.last_message.created_at} />
+                                )}{' '}
+                                {row.unread > 0 && (
+                                    <b aria-label={`${row.unread} unread messages`}>{row.unread}</b>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+                    {inboxMore && (
+                        <button onClick={() => setInboxPage((value) => value + 1)}>
+                            More conversations
+                        </button>
+                    )}
+                </aside>
+                {selected > 0 ? (
+                    <Conversation
+                        key={selected}
+                        id={selected}
+                        session={session}
+                        onRead={onRead}
+                        onUnavailable={onUnavailable}
+                    />
+                ) : (
+                    <section className="wc-chat wc-chat-welcome">
+                        <span>✳</span>
+                        <h2>
+                            Your next conversation
+                            <br />
+                            starts with a hello.
+                        </h2>
+                        <p>Pick a conversation or start one with a friend.</p>
+                        <button
+                            onClick={() => {
+                                setFriendLoading(true);
+                                setPicker(true);
+                            }}
+                        >
+                            Find a friend to message
+                        </button>
+                    </section>
+                )}
+            </div>
+        </main>
+    );
 }
 
 import Conversation from '../components/Conversation.jsx';

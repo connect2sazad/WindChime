@@ -1,4 +1,4 @@
-import {ReportDialog} from '../../safety/index.js';
+import { ReportDialog } from '../../safety/index.js';
 import ProfileLink from '../../profiles/ProfileLink.js';
 import Avatar from '../../profiles/Avatar.js';
 import CommentReactionControl from './CommentReactionControl.jsx';
@@ -10,32 +10,106 @@ import { getComments } from '../api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 
 function CommentRow({ record, currentUser, onReply, onDelete, busy, postId, token }) {
-    const [report,setReport]=useState(false);const [reactorsOpen, setReactorsOpen] = useState(false);
-    const [author,setAuthor]=useState(null);
-    useEffect(()=>{const controller=new AbortController();getDisplayUser(token,record.creator_id,controller.signal).then(user=>{if(!controller.signal.aborted)setAuthor(user);}).catch(()=>{if(!controller.signal.aborted)setAuthor({id:record.creator_id,name:'Author unavailable',username:null});});return()=>controller.abort();},[token,record.creator_id]);
-    const person=record.creator_id===currentUser.id?currentUser:author?.id===record.creator_id?author:null;
-    const name=person?.name||'Loading author…';
+    const [report, setReport] = useState(false);
+    const [reactorsOpen, setReactorsOpen] = useState(false);
+    const [author, setAuthor] = useState(null);
+    useEffect(() => {
+        const controller = new AbortController();
+        getDisplayUser(token, record.creator_id, controller.signal)
+            .then((user) => {
+                if (!controller.signal.aborted) setAuthor(user);
+            })
+            .catch(() => {
+                if (!controller.signal.aborted)
+                    setAuthor({
+                        id: record.creator_id,
+                        name: 'Author unavailable',
+                        username: null,
+                    });
+            });
+        return () => controller.abort();
+    }, [token, record.creator_id]);
+    const person =
+        record.creator_id === currentUser.id
+            ? currentUser
+            : author?.id === record.creator_id
+              ? author
+              : null;
+    const name = person?.name || 'Loading author…';
     return (
         <div className="wc-ig-row">
-            <Avatar name={name} id={record.creator_id} token={token} small/>
+            <Avatar name={name} id={record.creator_id} token={token} small />
             <div className="wc-ig-body">
-                <p><ProfileLink className="wc-comment-author" username={person?.username}><strong>{name}</strong>{person?.username&&<small>@{person.username}</small>}</ProfileLink> <span>{record.content}</span></p>
+                <p>
+                    <ProfileLink className="wc-comment-author" username={person?.username}>
+                        <strong>{name}</strong>
+                        {person?.username && <small>@{person.username}</small>}
+                    </ProfileLink>{' '}
+                    <span>{record.content}</span>
+                </p>
                 <div className="wc-ig-meta">
                     <RelativeTime value={record.created_at} />
-                    <button type="button" disabled={busy} onClick={()=>onReply({...record,name})}>Reply</button>
-                    <CommentOptions disabled={busy} isReply={Boolean(record.parent_id)}
-                        onViewReactions={()=>setReactorsOpen(true)} onReport={record.creator_id!==currentUser.id?()=>setReport(true):undefined}
-                        onDelete={record.creator_id===currentUser.id?()=>onDelete(record):undefined} />
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onReply({ ...record, name })}
+                    >
+                        Reply
+                    </button>
+                    <CommentOptions
+                        disabled={busy}
+                        isReply={Boolean(record.parent_id)}
+                        onViewReactions={() => setReactorsOpen(true)}
+                        onReport={
+                            record.creator_id !== currentUser.id ? () => setReport(true) : undefined
+                        }
+                        onDelete={
+                            record.creator_id === currentUser.id
+                                ? () => onDelete(record)
+                                : undefined
+                        }
+                    />
                 </div>
             </div>
-            <CommentReactionControl token={token} postId={postId} commentId={record.id} disabled={busy} />
-            {report&&<ReportDialog token={token} targetType="comment" targetId={record.id} userId={record.creator_id} onClose={()=>setReport(false)}/>}
-            {reactorsOpen && <ReactionsDialog token={token} postId={postId} commentId={record.id} onClose={()=>setReactorsOpen(false)} />}
+            <CommentReactionControl
+                token={token}
+                postId={postId}
+                commentId={record.id}
+                disabled={busy}
+            />
+            {report && (
+                <ReportDialog
+                    token={token}
+                    targetType="comment"
+                    targetId={record.id}
+                    userId={record.creator_id}
+                    onClose={() => setReport(false)}
+                />
+            )}
+            {reactorsOpen && (
+                <ReactionsDialog
+                    token={token}
+                    postId={postId}
+                    commentId={record.id}
+                    onClose={() => setReactorsOpen(false)}
+                />
+            )}
         </div>
     );
 }
 
-export default function CommentItem({ comment, postId, token, currentUser, replyCount = 0, onReply, onDelete, version, busy }) {
+// Loads and displays one comment thread, including replies and pagination.
+export default function CommentItem({
+    comment,
+    postId,
+    token,
+    currentUser,
+    replyCount = 0,
+    onReply,
+    onDelete,
+    version,
+    busy,
+}) {
     const [open, setOpen] = useState(false);
     const [replies, setReplies] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -57,8 +131,11 @@ export default function CommentItem({ comment, postId, token, currentUser, reply
                     setPage(1);
                     setHasMore(result.pagination.has_next_page);
                 }
-            } catch (e) { if (!controller.signal.aborted) setError(e.message); }
-            finally { if (!controller.signal.aborted) setLoading(false); }
+            } catch (e) {
+                if (!controller.signal.aborted) setError(e.message);
+            } finally {
+                if (!controller.signal.aborted) setLoading(false);
+            }
         }
         load();
         return () => controller.abort();
@@ -71,11 +148,18 @@ export default function CommentItem({ comment, postId, token, currentUser, reply
         setError('');
         try {
             const result = await getComments(token, postId, undefined, comment.id, page + 1);
-            setReplies(previous => [...previous, ...result.data.filter(row => !previous.some(item => item.id === row.id))]);
-            setPage(value => value + 1);
+            setReplies((previous) => [
+                ...previous,
+                ...result.data.filter((row) => !previous.some((item) => item.id === row.id)),
+            ]);
+            setPage((value) => value + 1);
             setHasMore(result.pagination.has_next_page);
-        } catch (e) { setError(e.message); }
-        finally { pending.current = false; setLoading(false); }
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            pending.current = false;
+            setLoading(false);
+        }
     }
 
     function reply(record) {
@@ -84,20 +168,55 @@ export default function CommentItem({ comment, postId, token, currentUser, reply
     }
     return (
         <div className="wc-ig-thread">
-            <CommentRow record={comment} currentUser={currentUser} onReply={reply} onDelete={onDelete} busy={busy} postId={postId} token={token} />
+            <CommentRow
+                record={comment}
+                currentUser={currentUser}
+                onReply={reply}
+                onDelete={onDelete}
+                busy={busy}
+                postId={postId}
+                token={token}
+            />
             {(replyCount > 0 || open) && (
-                <button type="button" className="wc-ig-view-replies" aria-expanded={open}
-                    onClick={() => setOpen(value => !value)}>
-                    <span aria-hidden="true" />{open ? 'Hide replies' : `View replies (${replyCount})`}
+                <button
+                    type="button"
+                    className="wc-ig-view-replies"
+                    aria-expanded={open}
+                    onClick={() => setOpen((value) => !value)}
+                >
+                    <span aria-hidden="true" />
+                    {open ? 'Hide replies' : `View replies (${replyCount})`}
                 </button>
             )}
             {open && (
                 <div className="wc-ig-replies">
-                    {replies.map(record => <CommentRow key={record.id} record={record} currentUser={currentUser}
-                        onReply={reply} onDelete={onDelete} busy={busy} postId={postId} token={token} />)}
-                    {loading && <p className="wc-ig-status" role="status">Loading replies…</p>}
-                    {error && <p className="wc-ig-status" role="alert">{error}</p>}
-                    {!loading && hasMore && <button className="wc-ig-view-replies" type="button" onClick={more}>View more replies</button>}
+                    {replies.map((record) => (
+                        <CommentRow
+                            key={record.id}
+                            record={record}
+                            currentUser={currentUser}
+                            onReply={reply}
+                            onDelete={onDelete}
+                            busy={busy}
+                            postId={postId}
+                            token={token}
+                        />
+                    ))}
+                    {loading && (
+                        <p className="wc-ig-status" role="status">
+                            Loading replies…
+                        </p>
+                    )}
+                    {error && (
+                        <p className="wc-ig-status" role="alert">
+                            {error}
+                        </p>
+                    )}
+                    {!loading && hasMore && (
+                        <button className="wc-ig-view-replies" type="button" onClick={more}>
+                            View more replies
+                        </button>
+                    )}
                 </div>
             )}
         </div>
