@@ -19,8 +19,6 @@ const messageFor = (type) => ({
     'post.reaction': 'reacted to your post',
     'comment.reaction': 'reacted to your comment',
     'post.reshare': 'reshared your post',
-    'message.created': 'sent you a message',
-    'message.reaction': 'reacted to your message',
 }[type] || 'sent you a notification');
 
 export default function NotificationsScreen() {
@@ -34,7 +32,8 @@ export default function NotificationsScreen() {
         setLoading(true); setError('');
         try {
             const result = await getNotifications(session.token, signal);
-            const enriched = await Promise.all((result.data || []).map(async (notification) => {
+            const socialItems = (result.data || []).filter((notification) => !notification.type?.startsWith('message.'));
+            const enriched = await Promise.all(socialItems.map(async (notification) => {
                 try { return { ...notification, actor: await getDisplayUser(session.token, notification.actor_id, signal) }; }
                 catch { return { ...notification, actor: { name: 'WindChime member' } }; }
             }));
@@ -77,9 +76,7 @@ export default function NotificationsScreen() {
         } else if (item.type?.startsWith('post.') || item.type?.startsWith('comment.')) {
             const postId = item.context?.post_id || (item.target_type === 'post' ? item.target_id : null);
             if (postId) router.push(`/posts/${postId}`);
-        } else if (item.type?.startsWith('message.') && item.target_id && item.actor_id) {
-            router.push({ pathname: '/conversations/[id]', params: { id: String(item.target_id), peer_id: String(item.actor_id) } });
-        } else if (item.type?.startsWith('message.')) router.push('/(main)/chats');
+        }
     }
 
     return (

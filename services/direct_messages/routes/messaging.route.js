@@ -12,6 +12,9 @@ router.get('/conversations/:conversation_id/messages/:message_id/report-context'
 const sendLimit=rateLimit({windowMs:60000,limit:60,standardHeaders:true,legacyHeaders:false,keyGenerator:req=>String(req.auth.id),handler:(req,res,next)=>next(new errors.TooManyRequestsException('Please slow down and try again'))});
 router.get('/conversations',(req,res,next)=>Controller.inbox(req,res,next));
 router.post('/conversations',sendLimit,(req,res,next)=>Controller.start(req,res,next));
+router.get('/conversations/unread-count',(req,res,next)=>Controller.unreadCount(req,res,next));
+router.get('/conversations/:conversation_id/typing',(req,res,next)=>Controller.typingStatus(req,res,next));
+router.put('/conversations/:conversation_id/typing',(req,res,next)=>Controller.typing(req,res,next));
 router.get('/conversations/:conversation_id/messages',(req,res,next)=>Controller.messages(req,res,next));
 router.post('/conversations/:conversation_id/messages/sync',(req,res,next)=>Actions.sync(req,res,next));
 router.delete('/conversations/:conversation_id/messages/:message_id',sendLimit,(req,res,next)=>Actions.remove(req,res,next));

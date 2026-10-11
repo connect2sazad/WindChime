@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { IDENTITY_API } from '../../shared/config/services.js';
 import { apiRequest } from '../../shared/api/request.js';
 import { getRelationship, sendFriendRequest, followUser, unfollowUser, unfriend, getPublicConnections, respondFriendRequest } from '../../modules/social/api/connections.js';
-import { getUserPosts } from '../../modules/social/api/feed.js';
+import { getMediaUrl, getUserPosts, getUserReshares } from '../../modules/social/api/feed.js';
 import { startConversation } from '../../modules/messages/api/messages.js';
 import Avatar from '../../shared/components/Avatar.jsx';
 import MediaCarousel from '../../modules/social/components/MediaCarousel.jsx';
@@ -28,6 +28,8 @@ export default function PublicProfileScreen() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ friends: 0, followers: 0, following: 0 });
+    const [profileTab, setProfileTab] = useState('all');
+    const [layoutMode, setLayoutMode] = useState('list');
 
     const load = useCallback(async (signal) => {
         if (!token || !username) return;
@@ -37,7 +39,7 @@ export default function PublicProfileScreen() {
             const user = result.data;
             const [relation, feed, friends, followers, following] = await Promise.all([
                 getRelationship(token, user.id, signal),
-                getUserPosts(token, user.id, signal),
+                profileTab === 'reshares' ? getUserReshares(token, user.id, signal) : getUserPosts(token, user.id, signal, 1, profileTab),
                 getPublicConnections(token, user.id, 'friends', signal),
                 getPublicConnections(token, user.id, 'followers', signal),
                 getPublicConnections(token, user.id, 'following', signal),
@@ -48,7 +50,7 @@ export default function PublicProfileScreen() {
             setStats({ friends: friends.pagination?.total || 0, followers: followers.pagination?.total || 0, following: following.pagination?.total || 0 });
         } catch (cause) { if (!signal?.aborted) setError(cause.message || 'Could not open this profile.'); }
         finally { if (!signal?.aborted) setLoading(false); }
-    }, [token, username]);
+    }, [profileTab, token, username]);
 
     useFocusEffect(useCallback(() => {
         const controller = new AbortController();
@@ -88,7 +90,7 @@ export default function PublicProfileScreen() {
         setBusy(true);
         try {
             const nextPage = postsPage + 1;
-            const result = await getUserPosts(token, profile.id, undefined, nextPage);
+            const result = profileTab === 'reshares' ? await getUserReshares(token, profile.id, undefined, nextPage) : await getUserPosts(token, profile.id, undefined, nextPage, profileTab);
             setPosts((current) => [...current, ...(result.data || [])]);
             setPostsPage(nextPage); setPostsHaveMore(Boolean(result.pagination?.has_next_page));
         } catch (cause) { setError(cause.message || 'Could not load more posts.'); }
@@ -118,12 +120,14 @@ export default function PublicProfileScreen() {
                     </View> : null}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border }}><Stat count={postTotal} label="Posts" /><Stat count={stats.friends} label="Friends" /><Stat count={stats.followers} label="Followers" /><Stat count={stats.following} label="Following" /></View>
                 </View>
-                <Text style={{ color: colors.ink, fontSize: 16, fontWeight: '800', marginTop: 23, marginBottom: 10 }}>{isSelf ? 'Your moments' : `${profile.name.split(' ')[0]}’s moments`}</Text>
-                {posts.map((post) => <View key={post.id} style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 17, padding: 14, marginBottom: 10 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, marginTop: 22, marginBottom: 10 }}>{PROFILE_TABS.map(([value, label]) => <Pressable key={value} onPress={() => setProfileTab(value)} style={[buttonStyle, { backgroundColor: profileTab === value ? colors.ink : '#edf3e8' }]}><Text style={[buttonText, profileTab === value && { color: colors.white }]}>{label}</Text></Pressable>)}</ScrollView>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>{[['list', 'Full posts'], ['grid', 'Tiles']].map(([value, label]) => <Pressable key={value} onPress={() => setLayoutMode(value)} style={[buttonStyle, { backgroundColor: layoutMode === value ? '#dce9d3' : colors.white }]}><Text style={buttonText}>{label}</Text></Pressable>)}</View>
+                <Text style={{ color: colors.ink, fontSize: 16, fontWeight: '800', marginBottom: 10 }}>{isSelf ? 'Your moments' : `${profile.name.split(' ')[0]}’s moments`}</Text>
+                <View style={layoutMode === 'grid' ? { flexDirection: 'row', flexWrap: 'wrap', gap: 5 } : null}>{posts.map((post) => layoutMode === 'grid' ? <Pressable key={post.id} onPress={() => router.push(`/posts/${post.id}`)} style={{ width: '32%', aspectRatio: 0.9, borderRadius: 10, overflow: 'hidden', backgroundColor: '#e7eee5' }}>{post.media?.[0] ? <Image source={{ uri: getMediaUrl(post.id, post.media[0].id), headers: { Authorization: `Bearer ${token}` } }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text numberOfLines={5} style={{ padding: 8, color: colors.ink, fontSize: 10 }}>{post.content || 'Shared a moment'}</Text>}</Pressable> : <View key={post.id} style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 17, padding: 14, marginBottom: 10 }}>
                     <Text style={{ color: colors.ink, fontSize: 14, lineHeight: 21 }}>{post.content}</Text>
                     <MediaCarousel post={post} token={token} onError={() => setError('One or more post media files could not be loaded.')} />
                     <Text style={{ color: colors.muted, fontSize: 10, marginTop: 8 }}>{relativeTime(post.created_at)} ago</Text>
-                </View>)}
+                </View>)}</View>
                 {postsHaveMore ? <Pressable disabled={busy} onPress={loadMorePosts} style={[buttonStyle, { marginBottom: 12 }]}><Text style={buttonText}>{busy ? 'Loading…' : 'Load more moments'}</Text></Pressable> : null}
                 {!loading && !posts.length ? <Text style={{ color: colors.muted, textAlign: 'center', padding: 24, backgroundColor: colors.white, borderRadius: 16 }}>No shared moments yet.</Text> : null}
             </> : null}
@@ -133,4 +137,5 @@ export default function PublicProfileScreen() {
 
 const buttonStyle = { minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingHorizontal: 13, backgroundColor: '#edf3e8', borderWidth: 1, borderColor: colors.border };
 const buttonText = { color: colors.ink, fontSize: 10, fontWeight: '800' };
+const PROFILE_TABS = [['all', 'All'], ['text', 'Text'], ['photos', 'Photos'], ['videos', 'Videos'], ['reels', 'Reels'], ['reshares', 'Reshares']];
 function Stat({ count, label }) { return <View style={{ alignItems: 'center' }}><Text style={{ color: colors.ink, fontWeight: '800' }}>{count}</Text><Text style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{label}</Text></View>; }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,20 +17,25 @@ export default function ChatsScreen() {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const peerCache = useRef(new Map());
 
     useEffect(() => {
         const timer = setTimeout(() => setSearch(query.trim()), 300);
         return () => clearTimeout(timer);
     }, [query]);
 
-    const load = useCallback(async (signal) => {
-        setLoading(true); setError('');
+    const load = useCallback(async (signal, quiet = false) => {
+        if (!quiet) setLoading(true);
+        setError('');
         try {
             const response = await getConversations(session.token, 1, search, signal);
             const items = await Promise.all((response.data || []).map(async (item) => {
+                const cached = peerCache.current.get(item.peer_id);
+                if (cached) return { ...item, peer: cached };
                 let peer;
                 try { peer = await getDisplayUser(session.token, item.peer_id, signal); }
                 catch { peer = { id: item.peer_id, name: 'WindChime member', username: null }; }
+                peerCache.current.set(item.peer_id, peer);
                 return { ...item, peer };
             }));
             setRows(items);
@@ -44,7 +49,8 @@ export default function ChatsScreen() {
     useFocusEffect(useCallback(() => {
         const controller = new AbortController();
         load(controller.signal);
-        return () => controller.abort();
+        const timer = setInterval(() => load(undefined, true), 6000);
+        return () => { controller.abort(); clearInterval(timer); };
     }, [load]));
 
     return (

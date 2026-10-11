@@ -1,5 +1,9 @@
 import { NOTIFICATIONS_API } from '../../../shared/config/services.js';
 import { apiRequest } from '../../../shared/api/request.js';
+export async function getUnreadNotificationCount(token, signal) {
+    const result = await apiRequest(NOTIFICATIONS_API, '/notifications/unread-count', { token, signal });
+    return result.data.count;
+}
 
 export const getNotifications = (token, signal) =>
     apiRequest(NOTIFICATIONS_API, '/notifications?page=1&limit=30', { token, signal });

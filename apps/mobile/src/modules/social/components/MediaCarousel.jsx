@@ -5,7 +5,7 @@ import { getMediaUrl } from '../api/feed.js';
 import PostVideo from './PostVideo.jsx';
 import colors from '../../../styles/colors.js';
 
-export default function MediaCarousel({ post, token, isActive = false, onError, onDoubleTap }) {
+export default function MediaCarousel({ post, token, isActive = false, onError, onDoubleTap, reaction, reactionCount, commentCount, reshareCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, fullscreenReelId, onFullscreenReelChange, onNextReel }) {
     const media = [...(post.media || [])].sort((a, b) => a.sort_order - b.sort_order);
     const [width, setWidth] = useState(0);
     const [index, setIndex] = useState(0);
@@ -22,7 +22,7 @@ export default function MediaCarousel({ post, token, isActive = false, onError, 
     }
     if (!media.length) return null;
     return <View onTouchStart={tapStart} onTouchEnd={tapEnd} onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ marginTop: 12, overflow: 'hidden', borderRadius: 14, backgroundColor: '#e9eee6', aspectRatio: 0.95, position: 'relative', width: '100%' }}>
-        {media[0].kind === 'video' ? <PostVideo postId={post.id} mediaId={media[0].id} token={token} kind={post.kind} isActive={isActive} /> : width > 0 ? <ScrollView style={{ flex: 1 }} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, event.nativeEvent.layoutMeasurement.width)))}>
+        {media[0].kind === 'video' ? <PostVideo postId={post.id} mediaId={media[0].id} token={token} kind={post.kind} isActive={isActive} fullscreenReelId={fullscreenReelId} onFullscreenReelChange={onFullscreenReelChange} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} onLike={onLike} onReact={onReact} onComments={onComments} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : width > 0 ? <ScrollView style={{ flex: 1 }} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, event.nativeEvent.layoutMeasurement.width)))}>
             {media.map((asset, itemIndex) => <Image key={asset.id} source={{ uri: getMediaUrl(post.id, asset.id), headers: { Authorization: `Bearer ${token}` } }} style={{ width, height: width / 0.95 }} contentFit="cover" accessibilityLabel={`Post photo ${itemIndex + 1}`} onError={onError} />)}
         </ScrollView> : null}
         {media.length > 1 ? <View style={{ position: 'absolute', top: 9, right: 9, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: 'rgba(23,59,64,.85)' }}><Text style={{ color: colors.white, fontSize: 10, fontWeight: '700' }}>{index + 1} / {media.length}</Text></View> : null}

@@ -1,5 +1,5 @@
 import MessageReaction from '../models/message-reaction.model.js';
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
@@ -9,9 +9,10 @@ import sequelize from '../config/sequelize.js';
 import config from '../config/config.js';
 import Access from '../services/access.service.js';
 import { UPLOAD_DIR,cleanupFiles } from '../middlewares/upload-media.middleware.js';
-import { Id,Start,Send,Read,Inbox,Cursor } from '../schemas/messaging.schema.js';
+import { Id,Start,Send,Read,Inbox,Cursor,Typing } from '../schemas/messaging.schema.js';
 import { parseRequest } from '../utils/validation.js';
 import errors from '../errors/registry.js';
+import { isTyping, setTyping as updateTyping } from '../services/typing-state.service.js';
 const peerOf=(row,id)=>row.user_low_id===id?row.user_high_id:row.user_low_id;
 const readField=(row,id)=>row.user_low_id===id?'low_read_id':'high_read_id';
 const peerRead=(row,id)=>row.user_low_id===id?row.high_read_id:row.low_read_id;
@@ -36,6 +37,9 @@ export class MessagingController {
   for(const row of rows){try{await Access.requireFriend(req,peerOf(row,req.auth.id));}catch(e){if([403,404].includes(e.statusCode))continue;throw e;}const last=await Message.findOne({where:{conversation_id:row.id},order:[['id','DESC']]});const unread=await Message.count({where:{conversation_id:row.id,sender_id:{[Op.ne]:req.auth.id},deleted_at:null,id:{[Op.gt]:row[readField(row,req.auth.id)]}}});data.push({id:row.id,peer_id:peerOf(row,req.auth.id),last_message:last?messageDTO(last):null,unread,peer_read_id:peerRead(row,req.auth.id)});}
   return success(res,data,200,{pagination:{page,has_next_page:page*limit<count}});
  }catch(e){next(e);}}
+ async unreadCount(req,res,next){try{const [row]=await Conversation.sequelize.query(`SELECT COUNT(*) AS count FROM conversations c WHERE (c.user_low_id = :userId AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id AND m.sender_id <> :userId AND m.deleted_at IS NULL AND m.id > COALESCE(c.low_read_id, 0))) OR (c.user_high_id = :userId AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id AND m.sender_id <> :userId AND m.deleted_at IS NULL AND m.id > COALESCE(c.high_read_id, 0)))`,{replacements:{userId:req.auth.id},type:QueryTypes.SELECT});return success(res,{count:Number(row?.count)||0});}catch(e){next(e);}}
+ async typingStatus(req,res,next){try{const conversation=await member(req);return success(res,{typing:isTyping(conversation.id,peerOf(conversation,req.auth.id))});}catch(e){next(e);}}
+ async typing(req,res,next){try{const {typing}=parseRequest(Typing,req.body);const conversation=await member(req);updateTyping(conversation.id,req.auth.id,typing);return success(res,{typing});}catch(e){next(e);}}
  async messages(req,res,next){try{const query=parseRequest(Cursor,req.query);const row=await member(req);const where={conversation_id:row.id,...(query.before?{id:{[Op.lt]:query.before}}:query.after?{id:{[Op.gt]:query.after}}:{})};const rows=await Message.findAll({where,order:[['id',query.after?'ASC':'DESC']],limit:query.limit+1});const has_more=rows.length>query.limit;const selected=rows.slice(0,query.limit);if(!query.after)selected.reverse();return success(res,await enrich(selected,req),200,{peer_id:peerOf(row,req.auth.id),peer_read_id:peerRead(row,req.auth.id),has_more});}catch(e){next(e);}}
  async send(req,res,next){let persisted=false;try{const input=parseRequest(Send,req.body);const files=req.files||[];if(!input.content&&!files.length&&!input.shared_post_id)throw new errors.ValidationException('Write a message, add media or share a post');if(files.length&&input.shared_post_id)throw new errors.ValidationException('Share a post or attach files, not both');
   const attachments=[];for(const file of files){const hash=createHash('sha256');for await(const chunk of createReadStream(file.path))hash.update(chunk);attachments.push({filename:file.filename,kind:file.mediaKind,mime_type:file.mimetype,size:file.size,hash:hash.digest('hex')});}

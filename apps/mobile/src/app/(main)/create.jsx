@@ -7,6 +7,7 @@ import { createMediaPost, createPost } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
 import styles from '../../styles/create.styles.js';
+import Avatar from '../../shared/components/Avatar.jsx';
 
 export default function CreateScreen() {
     const { session } = useSession();
@@ -18,6 +19,7 @@ export default function CreateScreen() {
 
     async function publish() {
         const text = content.trim();
+        if (kind === 'reel' && !assets.length) { setError('Choose a video before sharing a Reel.'); return; }
         if ((!text && !assets.length) || busy) return;
         setBusy(true); setError('');
         try {
@@ -29,6 +31,8 @@ export default function CreateScreen() {
         } catch (cause) { setError(cause.message || 'Your post could not be shared.'); }
         finally { setBusy(false); }
     }
+
+    const canPublish = kind === 'reel' ? assets.length > 0 : Boolean(content.trim() || assets.length);
 
     async function pickPhotos() {
         setError('');
@@ -81,7 +85,8 @@ export default function CreateScreen() {
                     <Text style={styles.title}>What’s on your mind?</Text>
                     <Text style={styles.subtitle}>A thought, a question, or a small hello. Start a conversation with your people.</Text>
                     <View style={styles.card}>
-                        <View style={styles.author}><View style={styles.avatar}><Text style={styles.avatarText}>{(session.user.name || 'W').trim().slice(0, 1).toUpperCase()}</Text></View><Text style={styles.authorName}>{session.user.name || 'Your profile'}</Text></View>
+                        <View style={styles.author}><Avatar user={session.user} token={session.token} size={36} style={styles.avatar} /><Text style={styles.authorName}>{session.user.name || 'Your profile'}</Text></View>
+                        <View style={styles.mediaActions}>{['post', 'reel'].map((mode) => <Pressable key={mode} accessibilityRole="button" accessibilityState={{ selected: kind === mode }} style={[styles.mediaButton, kind === mode && { backgroundColor: colors.ink }]} onPress={() => { setKind(mode); setAssets([]); setError(''); }}><Text style={[styles.mediaButtonText, kind === mode && { color: colors.white }]}>{mode === 'post' ? 'Post' : 'Reel / video'}</Text></Pressable>)}</View>
                         <TextInput
                             style={styles.composer}
                             value={content}
@@ -93,10 +98,7 @@ export default function CreateScreen() {
                             autoFocus
                             textAlignVertical="top"
                         />
-                        <View style={styles.mediaActions}>
-                            <Pressable accessibilityRole="button" style={styles.mediaButton} onPress={pickPhotos}><Text style={styles.mediaButtonText}>▧  Add photos</Text></Pressable>
-                            <Pressable accessibilityRole="button" style={styles.mediaButton} onPress={pickVideo}><Text style={styles.mediaButtonText}>▶  Add a video</Text></Pressable>
-                        </View>
+                        <View style={styles.mediaActions}>{kind === 'post' ? <Pressable accessibilityRole="button" style={styles.mediaButton} onPress={pickPhotos}><Text style={styles.mediaButtonText}>▧  Add photos</Text></Pressable> : <Pressable accessibilityRole="button" style={styles.mediaButton} onPress={pickVideo}><Text style={styles.mediaButtonText}>▶  Choose a reel video</Text></Pressable>}</View>
                         {assets.length ? <View style={styles.previewRow}>
                             {assets.map((asset, index) => <View key={`${asset.uri}-${index}`} style={styles.preview}>
                                 {kind === 'reel' ? <View style={styles.videoPreview}><Text style={styles.videoGlyph}>▶</Text><Text style={styles.videoName} numberOfLines={1}>{asset.fileName || 'Video selected'}</Text></View> : <Image source={{ uri: asset.uri }} style={styles.previewImage} />}
@@ -107,7 +109,7 @@ export default function CreateScreen() {
                         <Text style={styles.hint}>{assets.length ? kind === 'reel' ? 'This video will be shared as a Reel.' : `${assets.length} ${assets.length === 1 ? 'photo' : 'photos'} selected.` : 'Add up to 12 square or portrait photos, or share one video as a Reel.'}</Text>
                     </View>
                     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-                    <Pressable accessibilityRole="button" disabled={(!content.trim() && !assets.length) || busy} onPress={publish} style={[styles.button, ((!content.trim() && !assets.length) || busy) && styles.disabled]}>
+                    <Pressable accessibilityRole="button" disabled={!canPublish || busy} onPress={publish} style={[styles.button, (!canPublish || busy) && styles.disabled]}>
                         {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Share your moment  →</Text>}
                     </Pressable>
                 </ScrollView>

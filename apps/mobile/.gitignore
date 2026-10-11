@@ -44,5 +44,4 @@ example
 /ios
 /android
 
-.expo-build-*
-.expo-check-*
+.expo-*

@@ -28,13 +28,17 @@ export async function apiRequest(base, path, { token, method = 'GET', body, sign
         }
         if (response.status === 401 && token) emitSessionExpired(token);
         if (!response.ok || result.success !== true) {
+            const validationDetails = Array.isArray(result.errors)
+                ? result.errors.map((item) => item?.message).filter(Boolean).join(' ')
+                : '';
             const error = new Error(
                 response.status === 429
                     ? 'Too many attempts. Please wait before trying again.'
-                    : result.message || 'Request failed.',
+                    : [result.message || 'Request failed.', validationDetails].filter(Boolean).join(' '),
             );
             error.status = response.status;
             error.errors = result.errors;
+            error.requestId = result.request_id;
             throw error;
         }
         return result;

@@ -1,5 +1,6 @@
 import { IDENTITY_API } from '../../../shared/config/services.js';
 import { apiRequest } from '../../../shared/api/request.js';
+import { File } from 'expo-file-system';
 
 function sessionFrom(data) {
     const { token, ...user } = data || {};
@@ -64,11 +65,7 @@ export async function updateCurrentProfile(token, changes) {
 export async function uploadCurrentProfilePicture(token, asset) {
     const form = new FormData();
     const extension = asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
-    form.append('picture', {
-        uri: asset.uri,
-        name: asset.fileName || `windchime-avatar.${extension}`,
-        type: asset.mimeType || (extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg'),
-    });
+    form.append('picture', new File(asset.uri), asset.fileName || `windchime-avatar.${extension}`);
     const result = await apiRequest(IDENTITY_API, '/users/me/picture', { token, method: 'PUT', body: form, timeoutMs: 60000 });
     return result.data;
 }
