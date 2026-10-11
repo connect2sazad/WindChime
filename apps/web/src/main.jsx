@@ -5,7 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './app/styles.js';
 import App from './app/App.jsx';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Register } from './modules/identity/index.js';
+import { PasswordRecovery, Register } from './modules/identity/index.js';
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>
@@ -13,6 +13,7 @@ createRoot(document.getElementById('root')).render(
             <Routes>
                 <Route path="/*" element={<App />} />
                 <Route path="/identity/new/" element={<Register />} />
+                <Route path="/identity/recover/" element={<PasswordRecovery />} />
             </Routes>
         </BrowserRouter>
     </StrictMode>,

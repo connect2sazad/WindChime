@@ -4,20 +4,56 @@ import Models from '../models/registry.js';
 import errors from '../errors/registry.js';
 import utils from '../utils/registry.js';
 import path from 'node:path';
-import {visibleRecord} from '../services/safety.service.js';
+import {visibleRecord,visibleScope} from '../services/safety.service.js';
 import { Op,literal } from 'sequelize';
 import { UPLOAD_DIR,cleanupFiles } from '../middlewares/upload-media.middleware.js';
+
+function cursorError() {
+ return new errors.ValidationException('Invalid feed cursor');
+}
+function decodeFeedCursor(value) {
+ if(!value)return null;
+ try {
+  const decoded=JSON.parse(Buffer.from(value,'base64url').toString('utf8'));
+  const date=new Date(decoded.created_at);
+  if(!decoded||Object.keys(decoded).length!==2||!Number.isSafeInteger(decoded.id)||decoded.id<1||
+   typeof decoded.created_at!=='string'||!Number.isFinite(date.getTime())||date.toISOString()!==decoded.created_at)throw cursorError();
+  return {id:decoded.id,created_at:date};
+ }catch(error){if(error instanceof errors.ValidationException)throw error;throw cursorError();}
+}
+function encodeFeedCursor(post) {
+ return Buffer.from(JSON.stringify({id:post.id,created_at:new Date(post.created_at).toISOString()})).toString('base64url');
+}
 
 class PostController extends BaseController {
  constructor(){super(Models.Post,{schema:Schemas.Post.PostSchema,createSchema:Schemas.Post.PostCreateSchema,updateSchema:Schemas.Post.PostUpdateSchema,
   creator:true,ownerOnly:true,includes:[{model:Models.PostMedia,as:'media'}],searchFields:['content'],idParam:'post_id'});}
+ feedScope(req,mode){
+  const viewer=this.parseId(req.auth.id);const scope={status:true};
+  if(mode==='network')scope[Op.and]=literal(`(Post.creator_id = ${viewer} OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${viewer} AND f.following_id = Post.creator_id) OR EXISTS (SELECT 1 FROM friendships fr WHERE fr.status = 'accepted' AND ((fr.user_low_id = ${viewer} AND fr.user_high_id = Post.creator_id) OR (fr.user_high_id = ${viewer} AND fr.user_low_id = Post.creator_id))))`);
+  return scope;
+ }
  async feed(req,res,next){try{
   const mode=req.query.mode||'network';if(!['network','discover'].includes(mode))throw new errors.ValidationException('Invalid feed mode');
   if(req.query.status&&req.query.status!=='true')throw new errors.ValidationException('Only active posts are available');
-  const viewer=this.parseId(req.auth.id);const scope={status:true};
-  if(mode==='network')scope[Op.and]=literal(`(Post.creator_id = ${viewer} OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${viewer} AND f.following_id = Post.creator_id) OR EXISTS (SELECT 1 FROM friendships fr WHERE fr.status = 'accepted' AND ((fr.user_low_id = ${viewer} AND fr.user_high_id = Post.creator_id) OR (fr.user_high_id = ${viewer} AND fr.user_low_id = Post.creator_id))))`);
+  const scope=this.feedScope(req,mode);
+  if(Object.hasOwn(req.query,'cursor'))return await this.cursorPage(req,res,scope);
   return super.getAllPaginatedRecords(req,res,next,scope);
  }catch(e){next(e);}}
+ async cursorPage(req,res,scope){
+  const parsed=Schemas.Pagination.CursorPageSchema.safeParse(req.query);
+  if(!parsed.success)throw new errors.ValidationException('Invalid feed pagination parameters',{errors:parsed.error.issues.map(issue=>({field:issue.path.join('.'),message:issue.message}))});
+  const {cursor:encoded,limit}=parsed.data;const cursor=decodeFeedCursor(encoded);
+  const conditions=[scope,visibleScope(req,this.model)];
+  if(cursor)conditions.push({[Op.or]:[
+   {created_at:{[Op.lt]:cursor.created_at}},
+   {created_at:cursor.created_at,id:{[Op.lt]:cursor.id}},
+  ]});
+  const rows=await this.model.findAll({where:{[Op.and]:conditions},include:this.includes,order:[['created_at','DESC'],['id','DESC']],limit:limit+1});
+  const hasNext=rows.length>limit;const pageRows=rows.slice(0,limit);
+  const nextCursor=hasNext&&pageRows.length?encodeFeedCursor(pageRows[pageRows.length-1]):null;
+  return res.status(200).json({success:true,message:'Feed retrieved successfully.',data:this.serializeMany(pageRows),pagination:{limit,has_next_page:hasNext,next_cursor:nextCursor}});
+ }
  async prepareCreate(req,values){
   const files=req.files||[];
   if(!values.content&&!files.length)throw new errors.ValidationException('Write something or add media');

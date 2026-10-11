@@ -39,6 +39,20 @@ export async function resendRegistration(verification_id) {
     });
     return result.data;
 }
+export async function requestPasswordRecovery(email) {
+    const result = await apiRequest(IDENTITY_API, '/auth/password/forgot', {
+        method: 'POST',
+        body: { email },
+    });
+    return result.data;
+}
+export async function completePasswordRecovery(email, code, password, confirm_password) {
+    const result = await apiRequest(IDENTITY_API, '/auth/password/reset', {
+        method: 'POST',
+        body: { email, code, password, confirm_password },
+    });
+    return result.data;
+}
 export async function checkAvailability(field, value, token, signal) {
     const result = await apiRequest(
         IDENTITY_API,

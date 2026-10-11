@@ -107,3 +107,18 @@ export const PasswordResetSchema = z.object({
         path: ['confirm_password']
     }
 );
+
+const RecoveryEmailSchema = z.string().trim().toLowerCase().pipe(z.email().max(150));
+export const PasswordRecoveryRequestSchema = z.object({
+    email: RecoveryEmailSchema,
+}).strict();
+
+export const PasswordRecoveryCompleteSchema = z.object({
+    email: RecoveryEmailSchema,
+    code: z.string().regex(/^\d{6}$/, 'Enter the six-digit code'),
+    password: PasswordSchema,
+    confirm_password: PasswordSchema,
+}).strict().refine(
+    data => data.password === data.confirm_password,
+    { message: 'Password and Confirm Password do not match!', path: ['confirm_password'] },
+);

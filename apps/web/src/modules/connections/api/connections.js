@@ -33,6 +33,12 @@ export async function sendFriendRequest(token, id) {
 export async function respondRequest(token, id, action) {
     return apiRequest(SOCIAL_API, `/friendships/${id}/${action}`, { token, method: 'PATCH' });
 }
+export async function unfriendPerson(token, friendshipId) {
+    return apiRequest(SOCIAL_API, `/friendships/${friendshipId}`, { token, method: 'DELETE' });
+}
+export async function removeFollower(token, userId) {
+    return apiRequest(SOCIAL_API, `/followers/${userId}`, { token, method: 'DELETE' });
+}
 export async function followPerson(token, id, following) {
     return apiRequest(SOCIAL_API, `/follows/${id}`, {
         token,

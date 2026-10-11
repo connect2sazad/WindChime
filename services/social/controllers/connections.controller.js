@@ -49,5 +49,10 @@ export class ConnectionsController {
   await Models.Follow.destroy({where:{follower_id:req.auth.id,following_id:user_id}});
   return respond(res,{following:false});
  }catch(e){next(e);}}
+ async removeFollower(req,res,next){try{
+  const {user_id}=utils.Validations.parseRequest(Params,req.params);
+  await Models.Follow.destroy({where:{follower_id:user_id,following_id:req.auth.id}});
+  return respond(res,{follower:false});
+ }catch(e){next(e);}}
 }
 export default new ConnectionsController();

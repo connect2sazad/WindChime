@@ -47,7 +47,7 @@ class RegistrationController {
    }
    await checkUser(row.username,row.email);
    const user=await Models.User.create({name:row.name,username:row.username,email:row.email,password:row.password_hash,email_verified_at:new Date()},{transaction});
-   const data=Schemas.UserSchema.parse(user.toJSON());const token=JWT.generate(data);
+   const data=Schemas.UserSchema.parse(user.toJSON());const token=JWT.generate({...data,session_version:user.session_version??0});
    await row.destroy({transaction});return {data:{...data,token}};
   });
   if(result.failure)throw new errors.ValidationException(result.failure);

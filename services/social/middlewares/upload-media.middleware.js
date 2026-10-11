@@ -1,13 +1,27 @@
 import multer from 'multer';
 import { photoDimensions } from '../utils/photo-dimensions.js';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import fs from 'node:fs/promises';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 import errors from '../errors/registry.js';
 export const UPLOAD_DIR=fileURLToPath(new URL('../uploads/posts/',import.meta.url));
 const TYPES={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4','video/webm':'webm'};
 export async function cleanupFiles(files=[]){await Promise.allSettled(files.map(file=>fs.unlink(file.path)));}
+export async function optimizePhoto(file){
+ const originalPath=file.path;const filename=randomUUID()+'.webp';const optimizedPath=path.join(UPLOAD_DIR,filename);
+ try{
+  const result=await sharp(originalPath,{limitInputPixels:64000000}).rotate().resize({width:2048,height:2560,fit:'inside',withoutEnlargement:true}).webp({quality:82,effort:4}).toFile(optimizedPath);
+  await fs.unlink(originalPath);file.filename=filename;file.path=optimizedPath;file.mimetype='image/webp';file.size=result.size;
+  file.dimensions={width:result.width,height:result.height};
+ }catch(error){
+  await fs.unlink(optimizedPath).catch(()=>{});
+  if(error instanceof errors.ValidationException)throw error;
+  throw new errors.ValidationException('This photo could not be optimized. Use a valid JPG, PNG or WebP image.');
+ }
+}
 export function sniffMime(buffer){
  if(buffer.length>=8&&buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';
  if(buffer.length>=3&&buffer[0]===255&&buffer[1]===216&&buffer[2]===255)return 'image/jpeg';
@@ -30,7 +44,7 @@ export async function validateFiles(files=[]){
   const mime=sniffMime(buffer);if(mime!==file.mimetype)throw new errors.ValidationException('File content does not match its media type');
   file.mediaKind=mime.startsWith('image/')?'image':'video';
   if(file.mediaKind==='image'&&file.size>10*1024*1024)throw new errors.ValidationException('Each image must be 10 MB or smaller');
-  if(file.mediaKind==='image')file.dimensions=await photoDimensions(file.path);
+  if(file.mediaKind==='image'){file.dimensions=await photoDimensions(file.path);await optimizePhoto(file);}
   if(file.mediaKind==='video')videos++;
  }
  if(videos&&(videos!==1||files.length!==1))throw new errors.ValidationException('Choose up to 12 photos or one video, not both');

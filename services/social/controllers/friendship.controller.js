@@ -171,6 +171,34 @@ class FriendshipController extends BaseController {
         }
     }
 
+    async unfriend(req, res, next) {
+        try {
+            if (!req.auth) throw new errors.UnauthorizedException();
+            const { id } = utils.Validations.parseRequest(
+                Schemas.Base.ParamsIdSchema,
+                { id: req.params.friendship_id }
+            );
+            await this.model.sequelize.transaction(async transaction => {
+                const friendship = await this.model.findByPk(id, {
+                    transaction,
+                    lock: transaction.LOCK.UPDATE,
+                });
+                if (!friendship || friendship.status !== 'accepted') {
+                    throw new errors.NotFoundException('Friendship not found');
+                }
+                if (![friendship.user_low_id, friendship.user_high_id].includes(req.auth.id)) {
+                    throw new errors.ForbiddenException('You cannot remove this friendship');
+                }
+                await friendship.destroy({ transaction });
+            });
+            return res.status(200).json(
+                utils.helpers.structurize_response(true, 'Friendship removed')
+            );
+        } catch (error) {
+            return next(error);
+        }
+    }
+
 }
 
 export default FriendshipController;

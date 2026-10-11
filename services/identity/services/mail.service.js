@@ -6,13 +6,12 @@ import errors from '../errors/registry.js';
 import config from '../config/config.js';
 const OUTBOX = fileURLToPath(new URL('../.mail-outbox/', import.meta.url));
 
-async function sendVerification(email, code, id) {
-    const text = `Your WindChime verification code is ${code}.\n\nIt expires in 10 minutes. If you did not request this, ignore this message.`;
+async function sendMessage(email, subject, text, id) {
     const mode = process.env.MAIL_TRANSPORT || 'smtp';
     if (mode === 'outbox') {
         if (process.env.NODE_ENV==='production' || !['development','test'].includes(config.ENVIRONMENT)) throw new errors.ServiceUnavailableException('Development outbox is disabled in this environment');
         await fs.mkdir(OUTBOX,{recursive:true});
-        await fs.writeFile(path.join(OUTBOX,`${id}.eml`),`To: ${email}\nSubject: Verify your WindChime account\n\n${text}`,{mode:0o600});
+        await fs.writeFile(path.join(OUTBOX,`${id}.eml`),`To: ${email}\nSubject: ${subject}\n\n${text}`,{mode:0o600});
         return { delivery:'outbox' };
     }
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) throw new errors.ServiceUnavailableException('Email delivery is not configured');
@@ -25,9 +24,19 @@ async function sendVerification(email, code, id) {
         disableFileAccess:true,disableUrlAccess:true,
     });
     try {
-        const info=await transport.sendMail({from:process.env.MAIL_FROM || process.env.SMTP_USER,to:email,subject:'Verify your WindChime account',text});
+        const info=await transport.sendMail({from:process.env.MAIL_FROM || process.env.SMTP_USER,to:email,subject,text});
         if (!info.accepted?.length) throw new Error('Email not accepted');
         return { delivery:'smtp' };
     } catch { throw new errors.ServiceUnavailableException('Could not deliver verification email. Please retry later'); }
 }
-export default { sendVerification };
+async function sendVerification(email, code, id) {
+    const text = `Your WindChime verification code is ${code}.\n\nIt expires in 10 minutes. If you did not request this, ignore this message.`;
+    return sendMessage(email, 'Verify your WindChime account', text, id);
+}
+
+async function sendPasswordReset(email, code, id) {
+    const text = `Your WindChime password recovery code is ${code}.\n\nIt expires in 10 minutes. If you did not request this, ignore this message.`;
+    return sendMessage(email, 'Reset your WindChime password', text, id);
+}
+
+export default { sendVerification, sendPasswordReset };

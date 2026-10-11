@@ -9,6 +9,7 @@ router.get('/connections', Middlewares.identityAuth, (req,res,next)=>Connections
 router.get('/connections/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.relationship(req,res,next));
 router.put('/follows/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.follow(req,res,next));
 router.delete('/follows/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.unfollow(req,res,next));
+router.delete('/followers/:user_id', Middlewares.identityAuth, (req,res,next)=>Connections.removeFollower(req,res,next));
 
 const FRIENDSHIPS = '/friendships';
 const FRIENDSHIPS_REQUESTS = FRIENDSHIPS + '/requests';
@@ -19,6 +20,9 @@ const FRIENDSHIPS_ID_CANCEL = FRIENDSHIPS_ID + '/cancel';
 
 router.post(FRIENDSHIPS_REQUESTS, Middlewares.identityAuth, (req, res, next) => {
     return Controllers.friendship_controller.request(req, res, next);
+});
+router.delete(FRIENDSHIPS_ID, Middlewares.identityAuth, (req, res, next) => {
+    return Controllers.friendship_controller.unfriend(req, res, next);
 });
 
 router.patch(

@@ -100,7 +100,8 @@ class AuthController {
             const tokend = Middlewares.JWTTokenization.generate({
                 id: user_data.id,
                 username: user_data.username,
-                email: user_data.email
+                email: user_data.email,
+                session_version: user.session_version ?? 0,
             });
 
             return res.status(utils.HTTP_STATUS.HTTP_200_OK.status_code).json(
@@ -222,7 +223,8 @@ class AuthController {
             const hashed_password = await bcrypt.hash(password, this.salt);
 
             await user.update({
-                password: hashed_password
+                password: hashed_password,
+                session_version: (user.session_version ?? 0) + 1,
             });
 
             const user_data = Schemas.UserSchema.parse({...user.toJSON(),avatar_version:user.avatar_filename||null});

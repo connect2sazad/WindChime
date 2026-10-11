@@ -5,21 +5,31 @@ function requiredApiUrl(name, value) {
     return url.replace(/\/+$/, '');
 }
 
+// Vite provides import.meta.env in the browser; Node's test runner does not.
+// Keep the test-only runtime pointed at the local service ports without changing
+// the required Vite configuration for browser builds.
+const apiEnvironment = import.meta.env ?? {
+    VITE_IDENTITY_API_URL: 'http://localhost:3101/api/v1',
+    VITE_SOCIAL_API_URL: 'http://localhost:3102/api/v1',
+    VITE_MESSAGES_API_URL: 'http://localhost:3103/api/v1',
+    VITE_NOTIFICATIONS_API_URL: 'http://localhost:3104/api/v1',
+};
+
 export const IDENTITY_API = requiredApiUrl(
     'VITE_IDENTITY_API_URL',
-    import.meta.env.VITE_IDENTITY_API_URL,
+    apiEnvironment.VITE_IDENTITY_API_URL,
 );
 export const SOCIAL_API = requiredApiUrl(
     'VITE_SOCIAL_API_URL',
-    import.meta.env.VITE_SOCIAL_API_URL,
+    apiEnvironment.VITE_SOCIAL_API_URL,
 );
 export const MESSAGES_API = requiredApiUrl(
     'VITE_MESSAGES_API_URL',
-    import.meta.env.VITE_MESSAGES_API_URL,
+    apiEnvironment.VITE_MESSAGES_API_URL,
 );
 export const NOTIFICATIONS_API = requiredApiUrl(
     'VITE_NOTIFICATIONS_API_URL',
-    import.meta.env.VITE_NOTIFICATIONS_API_URL,
+    apiEnvironment.VITE_NOTIFICATIONS_API_URL,
 );
 /** Shared network layer: feature APIs supply a base URL, endpoint path, and request options. */
 export async function apiRequest(

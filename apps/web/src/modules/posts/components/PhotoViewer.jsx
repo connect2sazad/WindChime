@@ -112,6 +112,7 @@ export default function PhotoViewer({
                         src={url}
                         alt={'Post photo ' + (index + 1) + ' of ' + media.length}
                         draggable={false}
+                        decoding="async"
                         onError={() => setError('This photo could not be displayed.')}
                     />
                 ) : (

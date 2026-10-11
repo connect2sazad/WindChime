@@ -223,3 +223,23 @@
     font-size: 11px;
     color: #617653;
 }
+.recovery-card {
+    max-width: 500px;
+}
+.recovery-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+.recovery-form > div,
+.recovery-form .signin-button,
+.recovery-form .form-message {
+    grid-column: 1;
+}
+.recovery-change-email {
+    min-height: 42px;
+    border: 0;
+    background: transparent;
+    color: #467a68;
+    font-size: 12px;
+}

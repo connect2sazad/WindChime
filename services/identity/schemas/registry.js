@@ -38,7 +38,9 @@
 import {
     LoginSchema,
     RegisterUserSchema,
-    PasswordResetSchema
+    PasswordResetSchema,
+    PasswordRecoveryRequestSchema,
+    PasswordRecoveryCompleteSchema,
 } from "./auth.schema.js";
 import { 
     BaseSchema,
@@ -66,6 +68,8 @@ const Schemas = {
     RegisterUserSchema,
     LoginSchema,
     PasswordResetSchema,
+    PasswordRecoveryRequestSchema,
+    PasswordRecoveryCompleteSchema,
     PaginationSchema,
     PaginationResponseSchema,
     ParamsIdSchema,

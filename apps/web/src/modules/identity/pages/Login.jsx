@@ -91,6 +91,12 @@ export default function Login({
                             />
                         </div>
 
+                        <div className="text-end mb-3">
+                            <Link className="register-back" to="/identity/recover/">
+                                Forgot your password?
+                            </Link>
+                        </div>
+
                         <button
                             className="signin-button"
                             type="submit"

@@ -1,5 +1,5 @@
-import { AccountSafety } from '../../safety/index.js';
 import ProfileLink from '../ProfileLink.js';
+import ProfileMoreMenu from '../components/ProfileMoreMenu.jsx';
 import { visibleProfileList } from '../utils/profileList.js';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
@@ -367,22 +367,20 @@ export default function Profile({ session, onUpdated }) {
                                             </Link>
                                         </>
                                     ) : (
-                                        <ConnectionActions key={id} session={session} userId={id} />
-                                    )}
-                                    {!own && (
-                                        <AccountSafety
+                                        <ConnectionActions
+                                            key={id + '-' + revision}
                                             session={session}
                                             userId={id}
                                             onChange={() => setRevision((value) => value + 1)}
                                         />
                                     )}
-                                    <button
-                                        type="button"
-                                        className="wc-profile-edit-button"
-                                        onClick={shareProfile}
-                                    >
-                                        Share profile
-                                    </button>
+                                    <ProfileMoreMenu
+                                        session={session}
+                                        userId={id}
+                                        own={own}
+                                        onShare={shareProfile}
+                                        onChange={() => setRevision((value) => value + 1)}
+                                    />
                                 </div>
                             </div>
                             {!edit && (
@@ -560,6 +558,7 @@ export default function Profile({ session, onUpdated }) {
                                                     <ConnectionActions
                                                         session={session}
                                                         userId={user.id}
+                                                        showRemoveFollower={own && tab === 'followers'}
                                                         onChange={() =>
                                                             setRevision((value) => value + 1)
                                                         }

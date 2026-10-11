@@ -70,6 +70,9 @@ const authenticate = async (req, res, next) => {
         }
         const user = await Models.User.findByPk(decoded.id);
         if (!user || !user.status) throw new errors.UnauthorizedException('Your account is unavailable or disabled');
+        if ((decoded.session_version ?? 0) !== (user.session_version ?? 0)) {
+            throw new errors.UnauthorizedException('Your session has expired. Please sign in again');
+        }
         req.user = user;
         req.token = token;
         req.auth = decoded;
@@ -78,7 +81,7 @@ const authenticate = async (req, res, next) => {
 };
 
 const generate = data => ({
-    token: jwt.sign({ id: data.id, username: data.username, email: data.email }, config.JWT_SECRET_KEY,
+    token: jwt.sign({ id: data.id, username: data.username, email: data.email, session_version: data.session_version ?? 0 }, config.JWT_SECRET_KEY,
         { algorithm: 'HS256', expiresIn: config.JWT_EXPIRES_IN, jwtid: randomUUID() }),
     token_type: 'Bearer',
     expires_in: config.JWT_EXPIRES_IN

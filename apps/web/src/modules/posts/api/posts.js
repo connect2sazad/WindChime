@@ -60,8 +60,11 @@ export async function getMediaBlob(token, postId, mediaId, signal) {
     });
 }
 
-export async function getPersonalizedFeed(token, signal, page = 1, mode = 'network') {
-    const result = await apiRequest(SOCIAL_API, `/feed?page=${page}&limit=10&mode=${mode}`, {
+export async function getPersonalizedFeed(token, signal, cursorOrPage = null, mode = 'network') {
+    const paging = Number.isInteger(cursorOrPage)
+        ? `page=${cursorOrPage}`
+        : `cursor=${encodeURIComponent(cursorOrPage || '')}`;
+    const result = await apiRequest(SOCIAL_API, `/feed?${paging}&limit=10&mode=${mode}`, {
         token,
         signal,
     });

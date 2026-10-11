@@ -78,6 +78,7 @@ function MediaItem({
                             alt={'Post photo ' + number + ' of ' + total}
                             draggable={false}
                             loading="lazy"
+                            decoding="async"
                             onLoad={(event) =>
                                 onSize?.(
                                     event.currentTarget.naturalWidth,

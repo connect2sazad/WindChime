@@ -14,7 +14,7 @@ export default function Home({ session, logoutError }) {
     const [feedLoading, setFeedLoading] = useState(true);
     const [feedError, setFeedError] = useState('');
     const [postNotice, setPostNotice] = useState('');
-    const [feedPage, setFeedPage] = useState(1);
+    const [feedCursor, setFeedCursor] = useState(null);
     const [feedPagination, setFeedPagination] = useState(null);
     const [feedRevision, setFeedRevision] = useState(0);
     const morePending = useRef(false);
@@ -24,7 +24,7 @@ export default function Home({ session, logoutError }) {
     useEffect(() => {
         // A safety change should hide blocked content immediately; reload from page one.
         const changed = () => {
-            setFeedPage(1);
+            setFeedCursor(null);
             setPosts([]);
             setFeedRevision((value) => value + 1);
         };
@@ -32,7 +32,7 @@ export default function Home({ session, logoutError }) {
         return () => window.removeEventListener('windchime:safety-changed', changed);
     }, []);
     useEffect(() => {
-        // Re-fetch when the user, feed mode, page, or refresh counter changes.
+        // Re-fetch when the user, feed mode, cursor, or refresh counter changes.
         const controller = new AbortController();
 
         async function load() {
@@ -43,7 +43,7 @@ export default function Home({ session, logoutError }) {
                 const result = await getPersonalizedFeed(
                     session.token,
                     controller.signal,
-                    feedPage,
+                    feedCursor,
                     feedMode,
                 );
 
@@ -73,7 +73,7 @@ export default function Home({ session, logoutError }) {
 
                 if (!controller.signal.aborted) {
                     setPosts((previous) =>
-                        feedPage === 1
+                        !feedCursor
                             ? items
                             : [
                                   ...previous,
@@ -103,7 +103,7 @@ export default function Home({ session, logoutError }) {
 
         load();
         return () => controller.abort();
-    }, [session.token, user.id, user.name, user.username, feedPage, feedRevision, feedMode]);
+    }, [session.token, user.id, user.name, user.username, feedCursor, feedRevision, feedMode]);
 
     function navigate() {
         route('/connections');
@@ -112,7 +112,7 @@ export default function Home({ session, logoutError }) {
         if (mode === feedMode) return;
         morePending.current = false;
         setFeedMode(mode);
-        setFeedPage(1);
+        setFeedCursor(null);
         setPosts([]);
         setFeedPagination(null);
         setFeedLoading(true);
@@ -120,7 +120,7 @@ export default function Home({ session, logoutError }) {
     }
     function refreshFeed() {
         morePending.current = false;
-        setFeedPage(1);
+        setFeedCursor(null);
         setFeedRevision((value) => value + 1);
         setFeedLoading(true);
     }
@@ -254,7 +254,7 @@ export default function Home({ session, logoutError }) {
                                 onClick={() => {
                                     if (morePending.current) return;
                                     morePending.current = true;
-                                    setFeedPage((value) => value + 1);
+                                    setFeedCursor(feedPagination.next_cursor);
                                 }}
                             >
                                 Load more moments ↓

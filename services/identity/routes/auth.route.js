@@ -1,4 +1,5 @@
 import Registration from '../controllers/registration.controller.js';
+import PasswordRecovery from '../controllers/password-recovery.controller.js';
 import { rateLimit } from 'express-rate-limit';
 import errors from '../errors/registry.js';
 /**
@@ -53,6 +54,8 @@ const limit=(count)=>rateLimit({windowMs:15*60*1000,limit:count,standardHeaders:
 router.post('/auth/availability',limit(120),(req,res,next)=>Registration.availability(req,res,next));
 router.post('/auth/register/verify',limit(30),(req,res,next)=>Registration.verify(req,res,next));
 router.post('/auth/register/resend',limit(10),(req,res,next)=>Registration.resend(req,res,next));
+router.post('/auth/password/forgot',limit(5),(req,res,next)=>PasswordRecovery.request(req,res,next));
+router.post('/auth/password/reset',limit(10),(req,res,next)=>PasswordRecovery.complete(req,res,next));
 
 const AUTH = "/auth";
 const AUTH_LOGIN = AUTH + "/login";

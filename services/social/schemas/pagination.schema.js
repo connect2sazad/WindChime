@@ -67,6 +67,11 @@ export const PaginationSchema = z.object({
 
 }).openapi("PaginationSchema");
 
+export const CursorPageSchema = z.object({
+    cursor: z.string().max(512).optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
 
 export const PaginationResponseSchema = z.object({
 

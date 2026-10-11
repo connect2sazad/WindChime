@@ -38,10 +38,12 @@ import './associations.js';
 
 import User from "./user.model.js";
 import TokenBlacklist from "./blacklist-token.model.js";
+import PasswordResetCode from './password-reset-code.model.js';
 
 const Models = {
     User,
-    TokenBlacklist
+    TokenBlacklist,
+    PasswordResetCode,
 };
 
 export default Models;
