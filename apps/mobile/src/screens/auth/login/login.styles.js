@@ -1,107 +1,41 @@
-import { StyleSheet } from "react-native";
-
-import colors from "../../../styles/colors";
-import spacing from "../../../styles/spacing";
-import typography from "../../../styles/typography";
+import { StyleSheet } from 'react-native';
+import colors from '../../../styles/colors.js';
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background,
-    },
-
-    content: {
-        flex: 1,
-        justifyContent: "center",
-        paddingHorizontal: spacing.lg,
-    },
-
-    header: {
-        marginBottom: spacing.xl,
-    },
-
-    brand: {
-        marginBottom: spacing.xl,
-        color: colors.text,
-        fontSize: typography.sizes.lg,
-        fontWeight: typography.weights.bold,
-    },
-
-    title: {
-        color: colors.text,
-        fontSize: typography.sizes.xxl,
-        fontWeight: typography.weights.bold,
-    },
-
-    description: {
-        marginTop: spacing.sm,
-        color: colors.textSecondary,
-        fontSize: typography.sizes.md,
-        lineHeight: 24,
-    },
-
-    form: {
-        gap: spacing.md,
-    },
-
-    field: {
-        gap: spacing.sm,
-    },
-
-    label: {
-        color: colors.text,
-        fontSize: typography.sizes.sm,
-        fontWeight: typography.weights.medium,
-    },
-
-    input: {
-        height: 52,
-        paddingHorizontal: spacing.md,
-
-        color: colors.text,
-        backgroundColor: colors.background,
-
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 12,
-
-        fontSize: typography.sizes.md,
-    },
-
-    button: {
-        height: 52,
-        alignItems: "center",
-        justifyContent: "center",
-
-        marginTop: spacing.sm,
-
-        backgroundColor: colors.primary,
-        borderRadius: 12,
-    },
-
-    buttonText: {
-        color: colors.white,
-        fontSize: typography.sizes.md,
-        fontWeight: typography.weights.semibold,
-    },
-
-    footer: {
-        flexDirection: "row",
-        justifyContent: "center",
-
-        marginTop: spacing.xl,
-    },
-
-    footerText: {
-        color: colors.textSecondary,
-        fontSize: typography.sizes.sm,
-    },
-
-    footerLink: {
-        color: colors.text,
-        fontSize: typography.sizes.sm,
-        fontWeight: typography.weights.semibold,
-    },
+    container: { flex: 1, backgroundColor: colors.paper },
+    keyboard: { flex: 1 },
+    content: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 18 },
+    loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper },
+    brandRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 16 },
+    brand: { color: colors.ink, fontSize: 23, fontWeight: '800', letterSpacing: -1.2 },
+    brandMark: { color: colors.lime, fontSize: 24, fontWeight: '800' },
+    hero: { minHeight: 190, overflow: 'hidden', position: 'relative', justifyContent: 'center', backgroundColor: colors.ink, borderRadius: 24, padding: 23, marginBottom: 16 },
+    eyebrow: { color: colors.lime, fontSize: 9, fontWeight: '800', letterSpacing: 2.1, marginBottom: 11 },
+    title: { maxWidth: 300, color: colors.white, fontSize: 28, lineHeight: 32, fontWeight: '700', letterSpacing: -1 },
+    description: { maxWidth: 300, color: '#d4e3de', fontSize: 12, lineHeight: 18, marginTop: 9 },
+    orbit: { width: 82, height: 82, position: 'absolute', right: -8, top: 28, borderColor: '#52766f', borderWidth: 1, borderRadius: 48, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-14deg' }] },
+    orbitText: { color: '#cce4a5', backgroundColor: '#3c625a', paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden', borderRadius: 12, fontSize: 11 },
+    orbitDot: { width: 7, height: 7, position: 'absolute', right: 4, bottom: 8, backgroundColor: colors.lime, borderRadius: 4 },
+    formCard: { backgroundColor: colors.white, borderRadius: 24, padding: 22, borderWidth: 1, borderColor: colors.border },
+    formEyebrow: { color: colors.green, fontSize: 9, fontWeight: '800', letterSpacing: 2 },
+    formTitle: { color: colors.ink, fontSize: 25, fontWeight: '700', letterSpacing: -0.6, marginTop: 8 },
+    formSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4, marginBottom: 16 },
+    field: { marginTop: 11 },
+    label: { color: colors.ink, fontSize: 11, fontWeight: '700', marginBottom: 7 },
+    input: { minHeight: 47, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 13, color: colors.ink, backgroundColor: '#fbfcf9', fontSize: 14 },
+    passwordRow: { minHeight: 47, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: '#fbfcf9' },
+    passwordInput: { flex: 1, minHeight: 45, borderWidth: 0, backgroundColor: 'transparent' },
+    passwordToggle: { minHeight: 45, justifyContent: 'center', paddingHorizontal: 14 },
+    passwordToggleText: { color: colors.green, fontSize: 12, fontWeight: '700' },
+    error: { color: colors.danger, marginTop: 10, fontSize: 12, lineHeight: 17 },
+    button: { minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink, borderRadius: 13, marginTop: 17 },
+    buttonPressed: { opacity: 0.88 },
+    buttonDisabled: { opacity: 0.65 },
+    buttonText: { color: colors.white, fontSize: 14, fontWeight: '700' },
+    buttonArrow: { color: colors.lime, fontSize: 17 },
+    footer: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', marginTop: 17 },
+    footerText: { color: colors.muted, fontSize: 11 },
+    footerLink: { color: colors.green, fontSize: 11, fontWeight: '700' },
 });
 
 export default styles;

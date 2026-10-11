@@ -1,0 +1,30 @@
+import { StyleSheet } from 'react-native';
+import colors from './colors.js';
+
+export default StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.paper },
+    content: { flexGrow: 1, width: '100%', maxWidth: 650, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 17, paddingBottom: 24 },
+    brand: { color: colors.ink, fontSize: 18, fontWeight: '800', letterSpacing: -0.8 },
+    mark: { color: colors.green },
+    title: { color: colors.ink, fontSize: 29, fontWeight: '800', letterSpacing: -0.9, marginTop: 24 },
+    subtitle: { color: colors.muted, fontSize: 12, marginTop: 4, marginBottom: 16 },
+    search: { height: 46, backgroundColor: colors.white, color: colors.ink, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 14, fontSize: 12, marginBottom: 12 },
+    row: { minHeight: 83, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 12, marginBottom: 9 },
+    avatar: { width: 47, height: 47, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e1eed1', borderRadius: 17 },
+    avatarText: { color: colors.green, fontSize: 16, fontWeight: '800' },
+    rowBody: { flex: 1, marginHorizontal: 11 },
+    person: { color: colors.ink, fontSize: 12, fontWeight: '800' },
+    handle: { color: colors.muted, fontSize: 10, marginTop: 2 },
+    lastMessage: { color: colors.textSecondary, fontSize: 11, marginTop: 7 },
+    unread: { minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderRadius: 10, paddingHorizontal: 5, backgroundColor: colors.green },
+    unreadText: { color: colors.white, fontSize: 9, fontWeight: '800' },
+    center: { minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 9 },
+    centerText: { color: colors.muted, fontSize: 11 },
+    errorBox: { backgroundColor: '#fff4f3', borderRadius: 13, borderWidth: 1, borderColor: '#f0d6d3', padding: 13 },
+    errorText: { color: colors.danger, fontSize: 12 },
+    retry: { color: colors.ink, fontSize: 11, fontWeight: '800', marginTop: 7 },
+    empty: { alignItems: 'center', padding: 27, marginTop: 20, borderRadius: 17, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
+    emptyMark: { color: colors.green, fontSize: 23 },
+    emptyTitle: { color: colors.ink, fontWeight: '800', fontSize: 14, marginTop: 7 },
+    emptyText: { color: colors.muted, textAlign: 'center', fontSize: 11, lineHeight: 17, marginTop: 6 },
+});
