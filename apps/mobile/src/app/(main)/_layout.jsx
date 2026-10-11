@@ -42,6 +42,7 @@ export default function MainLayout() {
             <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarAccessibilityLabel: 'Profile', tabBarIcon: ({ color }) => <SymbolView name={{ ios: 'person.crop.circle.fill', android: 'account_circle', web: 'account_circle' }} tintColor={color} size={23} /> }} />
             <Tabs.Screen name="notifications" options={{ href: null }} />
             <Tabs.Screen name="profile-edit" options={{ href: null }} />
+            <Tabs.Screen name="saved" options={{ href: null }} />
         </Tabs>
     );
 }

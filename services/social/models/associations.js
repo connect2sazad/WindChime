@@ -40,6 +40,7 @@ import Comment from "./comment.model.js";
 import PostReaction from "./post-reaction.model.js";
 import CommentReaction from "./comment-reaction.model.js";
 import PostRepost from "./post-repost.model.js";
+import SavedPost from './saved-post.model.js';
 
 Comment.belongsTo(Post, {
     foreignKey: 'post_id',
@@ -81,12 +82,16 @@ Post.hasMany(PostRepost, {
     as: 'reposts'
 });
 
+SavedPost.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
+Post.hasMany(SavedPost, { foreignKey: 'post_id', as: 'savedBy' });
+
 export {
     Post,
     Comment,
     PostReaction,
     CommentReaction,
     PostRepost,
+    SavedPost,
 };
 Post.hasMany(PostMedia,{foreignKey:'post_id',as:'media'});
 PostMedia.belongsTo(Post,{foreignKey:'post_id',as:'post'});

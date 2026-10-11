@@ -17,6 +17,12 @@ const Post = sequelize.define('Post',
             allowNull: false,
         },
 
+        views_count: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0,
+        },
+
     },
     {
         ...BaseModel.BaseOptions,

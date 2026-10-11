@@ -100,6 +100,7 @@ export default function ProfileScreen() {
                         <Pressable style={styles.link} onPress={() => router.push('/(main)/connections')}><Text style={styles.linkText}>Your people</Text></Pressable>
                         <Pressable style={styles.link} onPress={() => router.push('/(main)/chats')}><Text style={styles.linkText}>Messages</Text></Pressable>
                     </View>
+                    <Pressable onPress={() => router.push('/(main)/saved')} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, marginTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}><SymbolView name={{ ios: 'bookmark', android: 'bookmark_border', web: 'bookmark_border' }} tintColor={colors.green} size={18} /><Text style={{ color: colors.green, fontWeight: '700', fontSize: 13 }}>Saved moments</Text></Pressable>
                 </View>
                 {error ? <Text style={styles.error}>{error}</Text> : null}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 7, marginTop: 20, marginBottom: 10 }}>

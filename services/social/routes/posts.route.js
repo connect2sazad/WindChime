@@ -13,6 +13,8 @@ export const POSTS_ID_REPOST = POSTS_ID + '/repost';
 export const POSTS_ID_REACTION = POSTS_ID + '/reactions';
 export const POSTS_ID_REACTION_ME = POSTS_ID_REACTION + '/me';
 export const POSTS_ID_REACTION_SUMMARY = POSTS_ID_REACTION + '/summary';
+export const POSTS_ID_VIEWS = POSTS_ID + '/views';
+export const POSTS_ID_VIEW = POSTS_ID + '/view';
 
 // create a new post
 router.post(POSTS, Middlewares.identityAuth, uploadMedia, (req, res, next) => {
@@ -28,6 +30,9 @@ router.get(POSTS, Middlewares.identityAuth, (req, res, next) => {
 router.get(POSTS_ID, Middlewares.identityAuth, (req, res, next) => {
     return Controllers.post_controller.get(req, res, next);
 });
+
+router.get(POSTS_ID_VIEWS, Middlewares.identityAuth, (req, res, next) => Controllers.post_controller.views(req, res, next));
+router.put(POSTS_ID_VIEW, Middlewares.identityAuth, (req, res, next) => Controllers.post_controller.recordView(req, res, next));
 
 // update an existing post
 router.patch(POSTS_ID, Middlewares.identityAuth, (req, res, next) => {

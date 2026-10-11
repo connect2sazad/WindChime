@@ -38,7 +38,7 @@ async function request(path,method='GET',body,token=true){
     return {status:r.status,body:await r.json()};
 }
 function record(extra={}){
-    const data={id:3,creator_id:1,content:'Hello',status:true,created_at:new Date(),updated_at:new Date(),deleted_at:null,...extra};
+    const data={id:3,creator_id:1,content:'Hello',views_count:0,status:true,created_at:new Date(),updated_at:new Date(),deleted_at:null,...extra};
     return {...data,reload:async()=>{},toJSON:()=>({...data}),update:async values=>{Object.assign(data,values);return {reload:async()=>{},toJSON:()=>({...data})};},destroy:async()=>{}};
 }
 test('me returns verified identity',async()=>{identity();const r=await request('/me');assert.equal(r.status,200);assert.equal(r.body.data.id,1);});
@@ -96,6 +96,31 @@ for(const method of ['PATCH','DELETE']){
     });
 }
 test('other users can read a post',async()=>{identity(2);mock.method(Models.Post,'findOne',async()=>record());assert.equal((await request('/posts/3')).status,200);});
+test('visible post view endpoint increments and returns the persisted count',async()=>{
+    identity(2);transaction();const post=record({views_count:4});post.increment=async(field,options)=>{assert.equal(field,'views_count');assert.equal(options.by,1);post.views_count+=1;};post.reload=async()=>post;
+    mock.method(Models.Post,'findOne',async()=>post);
+    const result=await request('/posts/3/view','PUT',{});assert.equal(result.status,200);assert.equal(result.body.data.views,5);
+});
+test('post view count endpoint respects visibility and hides blocked creators',async()=>{
+    identity(2);mock.method(Block,'findAll',async()=>[{blocker_id:1,blocked_id:2}]);mock.method(Models.Post,'findOne',async()=>record({creator_id:1}));
+    assert.equal((await request('/posts/3/views')).status,404);
+});
+test('saving a post only creates a private authenticated-user bookmark',async()=>{
+    identity(2);mock.method(Models.Post,'findOne',async options=>{assert.deepEqual(options.where,{id:3,status:true});return record({creator_id:1});});
+    mock.method(Models.SavedPost,'findOrCreate',async options=>{assert.deepEqual(options.where,{creator_id:2,post_id:3});assert.deepEqual(options.defaults,options.where);return [{created_at:new Date('2026-10-12T00:00:00Z')},true];});
+    const result=await request('/posts/3/saved','PUT',{});assert.equal(result.status,200);assert.equal(result.body.data.saved,true);
+});
+test('blocked and inactive posts cannot be saved',async()=>{
+    identity(2);mock.method(Block,'findAll',async()=>[{blocker_id:1,blocked_id:2}]);mock.method(Models.Post,'findOne',async()=>record({creator_id:1}));
+    assert.equal((await request('/posts/3/saved','PUT',{})).status,404);
+});
+test('saved moment list is private and excludes blocked or inactive post owners',async()=>{
+    identity(2);mock.method(Block,'findAll',async()=>[{blocker_id:2,blocked_id:9}]);mock.method(Models.SavedPost,'findAll',async options=>{
+        assert.deepEqual(options.where,{creator_id:2});assert.equal(options.include[0].where.status,true);assert.deepEqual(options.include[0].where.creator_id,{[Op.notIn]:[9]});
+        return [{created_at:new Date('2026-10-12T00:00:00Z'),post:{toJSON:()=>({id:3,creator_id:1,content:'Saved',media:[]})}}];
+    });
+    const result=await request('/saved-posts');assert.equal(result.status,200);assert.equal(result.body.data[0].id,3);assert.equal(result.body.data[0].saved_at,'2026-10-12T00:00:00.000Z');
+});
 test('invalid pagination is 422',async()=>{identity();assert.equal((await request('/posts?page=0')).status,422);});
 test('pagination passes limit and offset',async()=>{
     identity();mock.method(Models.Post,'findAndCountAll',async options=>{assert.equal(options.limit,1);assert.equal(options.offset,1);return {count:2,rows:[record()]};});

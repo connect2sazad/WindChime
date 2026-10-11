@@ -43,6 +43,7 @@ import CommentReaction from './comment-reaction.model.js';
 import Friendship from './friendship.model.js';
 import Follow from './follow.model.js';
 import PostRepost from './post-repost.model.js';
+import SavedPost from './saved-post.model.js';
 
 const Models = {
     PostMedia,
@@ -53,6 +54,7 @@ const Models = {
     Friendship,
     Follow,
     PostRepost,
+    SavedPost,
 };
 
 export default Models;

@@ -36,10 +36,12 @@ import health from "./health.route.js";
 import posts from './posts.route.js';
 import comments from './comments.route.js';
 import friendships from './friendships.route.js';
+import savedPosts from './saved-posts.route.js';
 
 export default {
     health,
     posts,
     comments,
     friendships,
+    savedPosts,
 };

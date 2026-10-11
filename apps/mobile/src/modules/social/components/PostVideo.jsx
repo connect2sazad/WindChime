@@ -13,9 +13,10 @@ const frame = { width: '100%', aspectRatio: 0.82, maxHeight: 520, borderRadius: 
 const REACTIONS = ['like', 'love', 'laugh', 'sad', 'angry'];
 const REASONS = [['spam', 'Spam'], ['harassment', 'Harassment'], ['hate', 'Hateful content'], ['sexual_content', 'Sexual content'], ['violence', 'Violence or threats'], ['scam', 'Scam or impersonation'], ['privacy', 'Privacy violation'], ['other', 'Something else']];
 
-export default function PostVideo({ postId, mediaId, token, kind, isActive = false, fullscreenReelId, onFullscreenReelChange, reaction, reactionCount = 0, commentCount = 0, reshareCount = 0, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap, onNextReel }) {
+export default function PostVideo({ postId, mediaId, token, kind, isActive = false, fullscreenReelId, onFullscreenReelChange, reaction, reactionCount = 0, commentCount = 0, reshareCount = 0, viewCount = 0, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap, onNextReel }) {
     const [localFullscreen, setLocalFullscreen] = useState(false);
-    const fullscreen = fullscreenReelId !== undefined ? fullscreenReelId === postId : localFullscreen;
+    const externallyControlled = fullscreenReelId !== undefined;
+    const fullscreen = externallyControlled ? fullscreenReelId === postId : localFullscreen;
     const changeFullscreen = (value) => onFullscreenReelChange ? onFullscreenReelChange(value ? postId : null) : setLocalFullscreen(value);
     const muted = useSyncExternalStore(subscribeVideoMute, getVideosMuted, getVideosMuted);
     const focused = useIsFocused();
@@ -29,11 +30,11 @@ export default function PostVideo({ postId, mediaId, token, kind, isActive = fal
         try {
             player.muted = muted;
             const anotherReelIsFullscreen = fullscreenReelId != null && !fullscreen;
-            if (focused && !anotherReelIsFullscreen && (fullscreen || (kind === 'reel' && isActive))) player.play();
+            if (focused && !anotherReelIsFullscreen && (externallyControlled ? (fullscreenReelId == null && kind === 'reel' && isActive) : (fullscreen || (kind === 'reel' && isActive)))) player.play();
             else player.pause();
         } catch { /* FlatList can release a recycled player before its cleanup effect runs. */ }
         return () => { try { player.pause(); } catch { /* The player may already be released. */ } };
-    }, [focused, fullscreen, fullscreenReelId, isActive, kind, muted, player]);
+    }, [externallyControlled, focused, fullscreen, fullscreenReelId, isActive, kind, muted, player]);
     useEffect(() => () => clearTimeout(tapTimer.current), []);
 
     function inlineTap() {
@@ -53,13 +54,13 @@ export default function PostVideo({ postId, mediaId, token, kind, isActive = fal
         <Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Turn sound on for all videos' : 'Mute all videos'} onPress={toggleVideoMute} style={{ position: 'absolute', top: 8, right: 8, width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(16,47,52,.78)' }}><SymbolView name={{ ios: muted ? 'speaker.slash.fill' : 'speaker.wave.2.fill', android: muted ? 'volume_off' : 'volume_up', web: muted ? 'volume_off' : 'volume_up' }} tintColor={colors.white} size={19} /></Pressable>
         {status === 'loading' ? <ActivityIndicator pointerEvents="none" color={colors.white} style={{ position: 'absolute', alignSelf: 'center' }} /> : null}
         {error ? <Text pointerEvents="none" style={{ color: colors.white, position: 'absolute', bottom: 14, left: 12 }}>Video unavailable. Check your connection.</Text> : null}
-        <Modal visible={fullscreen} animationType="fade" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => changeFullscreen(false)}>
-            {fullscreen ? <FullscreenPlayer player={player} kind={kind} muted={muted} onToggleMuted={toggleVideoMute} onClose={() => changeFullscreen(false)} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} onLike={onLike} onReact={onReact} onComments={() => { changeFullscreen(false); onComments?.(); }} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : null}
-        </Modal>
+        {!externallyControlled ? <Modal visible={fullscreen} animationType="fade" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => changeFullscreen(false)}>
+            {fullscreen ? <FullscreenPlayer player={player} kind={kind} muted={muted} onToggleMuted={toggleVideoMute} onClose={() => changeFullscreen(false)} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} viewCount={viewCount} onLike={onLike} onReact={onReact} onComments={() => { changeFullscreen(false); onComments?.(); }} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : null}
+        </Modal> : null}
     </View>;
 }
 
-function FullscreenPlayer({ player, kind, muted, onToggleMuted, onClose, onNextReel, reaction, reactionCount, commentCount, reshareCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap }) {
+function FullscreenPlayer({ player, kind, muted, onToggleMuted, onClose, onNextReel, reaction, reactionCount, commentCount, reshareCount, viewCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap }) {
     const { status, error } = useEvent(player, 'statusChange', { status: player.status });
     const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
     const [menu, setMenu] = useState(false);
@@ -110,6 +111,8 @@ function FullscreenPlayer({ player, kind, muted, onToggleMuted, onClose, onNextR
                 </View>
                 <Pressable onPress={onComments} accessibilityLabel="View comments" style={railButton}><SymbolView name={{ ios: 'bubble.right', android: 'chat_bubble_outline', web: 'chat_bubble_outline' }} tintColor="#fff" size={24} /><Text style={railCount}>{commentCount}</Text></Pressable>
                 <Pressable onPress={onReshare} accessibilityLabel="Reshare reel" style={railButton}><SymbolView name={{ ios: 'arrow.2.squarepath', android: 'repeat', web: 'repeat' }} tintColor="#fff" size={24} /><Text style={railCount}>{reshareCount}</Text></Pressable>
+                <Pressable onPress={onShare} accessibilityLabel="Send video to a friend" style={railButton}><SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} tintColor="#fff" size={22} /></Pressable>
+                <View accessibilityRole="text" accessibilityLabel={`${viewCount} views`} style={railButton}><SymbolView name={{ ios: 'eye', android: 'visibility', web: 'visibility' }} tintColor="#fff" size={22} /><Text style={railCount}>{viewCount}</Text></View>
             </View>
         </View>
         {heart ? <View pointerEvents="none" style={{ position: 'absolute', alignSelf: 'center' }}><ReactionIcon type="like" size={94} color="#fff" /></View> : null}

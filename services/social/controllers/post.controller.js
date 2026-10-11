@@ -87,5 +87,18 @@ class PostController extends BaseController {
   const {count,rows}=await Models.PostRepost.findAndCountAll({where:{creator_id},include:[{model:Models.Post,as:'post',required:true,where:{status:true,...(req.blockedUserIds?.length?{creator_id:{[Op.notIn]:req.blockedUserIds}}:{})},include:this.includes}],distinct:true,limit,offset:(page-1)*limit,order:[['id','DESC']]});
   return res.json({success:true,message:'Reshares retrieved',data:rows.map(row=>({...this.serialize(row.post),reshared_at:row.created_at})),pagination:{page,limit,total:count,total_pages:Math.ceil(count/limit),has_next_page:page*limit<count,has_previous_page:page>1}});
  }catch(e){next(e);}}
+ async views(req,res,next){try{
+  const post=await this.getRecord(req,{write:false});
+  return res.status(200).json({success:true,message:'Post views retrieved',data:{views:post.views_count||0}});
+ }catch(e){next(e);}}
+ async recordView(req,res,next){try{
+  const result=await this.model.sequelize.transaction(async transaction=>{
+   const post=await this.getRecord(req,{transaction,write:false});
+   await post.increment('views_count',{by:1,transaction});
+   await post.reload({transaction});
+   return post.views_count;
+  });
+  return res.status(200).json({success:true,message:'Post view recorded',data:{views:result}});
+ }catch(e){next(e);}}
 }
 export default PostController;

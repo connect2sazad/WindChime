@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, FlatList, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, FlatList, Modal, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { getDisplayUser, getFeed, getPostSummary, removePostReaction, removeRepost, setPostReaction, setRepost } from '../../modules/social/api/feed.js';
+import { deletePost, getDisplayUser, getFeed, getPostSummary, getSavedPostState, recordPostView, removePostReaction, removeRepost, savePost, setPostReaction, setRepost, unsavePost, updatePost } from '../../modules/social/api/feed.js';
 import { getPostReactors } from '../../modules/social/api/reactions.js';
 import { getConnections } from '../../modules/social/api/connections.js';
 import { sendMessage, startConversation } from '../../modules/messages/api/messages.js';
@@ -18,6 +18,7 @@ import relativeTime from '../../shared/utils/relativeTime.js';
 import { sendReport } from '../../modules/safety/api/safety.js';
 import useUnreadNotifications from '../../modules/notifications/hooks/useUnreadNotifications.js';
 import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
+import { ReelViewer } from '../../modules/social/components/ReelExperience.jsx';
 
 export default function FeedScreen() {
     const tabSwipe = useMainTabSwipe('/(main)');
@@ -32,18 +33,26 @@ export default function FeedScreen() {
     const [error, setError] = useState('');
     const [activeReel, setActiveReel] = useState(null);
     const [fullscreenReelId, setFullscreenReelId] = useState(null);
+    const [initialFullscreenReelId, setInitialFullscreenReelId] = useState(null);
+    const viewedPosts = useRef(new Set());
     const listViewability = useRef(({ viewableItems }) => {
         const reel = viewableItems.find(({ item }) => item.kind === 'reel' && item.media?.some((asset) => asset.kind === 'video'));
         setActiveReel(reel?.item?.id ?? null);
+        for (const { item, isViewable } of viewableItems) {
+            if (!isViewable || viewedPosts.current.has(item.id)) continue;
+            viewedPosts.current.add(item.id);
+            recordPostView(session.token, item.id).then((result) => {
+                if (result) setPosts((current) => current.map((post) => post.id === item.id ? { ...post, views_count: result.views } : post));
+            }).catch(() => viewedPosts.current.delete(item.id));
+        }
     }).current;
     const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70 }).current;
 
-    const openNextRandomReel = useCallback((currentId) => {
-        const candidates = posts.filter((post) => post.id !== currentId && post.kind === 'reel' && post.media?.some((asset) => asset.kind === 'video'));
-        if (!candidates.length) { setFullscreenReelId(null); return; }
-        const next = candidates[Math.floor(Math.random() * candidates.length)];
-        setFullscreenReelId(next.id);
-    }, [posts]);
+    const handleFullscreenReelChange = useCallback((id) => {
+        setFullscreenReelId(id);
+        if (id != null) setInitialFullscreenReelId(id);
+        else setInitialFullscreenReelId(null);
+    }, []);
     const requestLock = useRef(false);
     const requestController = useRef(null);
     const requestId = useRef(0);
@@ -132,6 +141,7 @@ export default function FeedScreen() {
 
     return (
         <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
+            <>
             <FlatList
                 data={posts}
                 keyExtractor={(item) => String(item.id)}
@@ -159,10 +169,19 @@ export default function FeedScreen() {
                         {loading && !posts.length ? <View style={styles.loadingCard}><ActivityIndicator color={colors.green} /><Text style={styles.loadingText}>Finding your latest moments…</Text></View> : null}
                     </View>
                 }
-                renderItem={({ item }) => <PostCard post={item} token={session.token} isActive={activeReel === item.id} fullscreenReelId={fullscreenReelId} onFullscreenReelChange={setFullscreenReelId} onNextReel={() => openNextRandomReel(item.id)} />}
+                renderItem={({ item }) => <PostCard post={item} token={session.token} viewerId={session.user.id} isActive={activeReel === item.id} fullscreenReelId={fullscreenReelId} onFullscreenReelChange={handleFullscreenReelChange} onPostUpdated={(updated) => setPosts((current) => current.map((post) => post.id === updated.id ? { ...post, ...updated } : post))} onPostDeleted={(postId) => setPosts((current) => current.filter((post) => post.id !== postId))} />}
                 ListEmptyComponent={!loading && !error ? <View style={styles.emptyCard}><Text style={styles.emptyMark}>✳</Text><Text style={styles.emptyTitle}>It’s quiet here.</Text><Text style={styles.emptyText}>{mode === 'network' ? 'Follow someone or add a friend to bring their moments into your feed.' : 'There are no public moments to discover yet. Try again soon.'}</Text></View> : null}
                 ListFooterComponent={footer}
             />
+            <ReelViewer
+                visible={fullscreenReelId != null}
+                posts={posts.filter((post) => post.kind === 'reel' && post.media?.some((asset) => asset.kind === 'video'))}
+                initialPostId={initialFullscreenReelId}
+                token={session.token}
+                onActiveChange={setFullscreenReelId}
+                onClose={() => { setFullscreenReelId(null); setInitialFullscreenReelId(null); }}
+            />
+            </>
         </SafeAreaView>
     );
 }
@@ -171,7 +190,7 @@ function ModeButton({ title, active, onPress }) {
     return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.modeButton, active && styles.modeButtonActive]}><Text style={[styles.modeText, active && styles.modeTextActive]}>{title}</Text></Pressable>;
 }
 
-function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelChange, onNextReel }) {
+function PostCard({ post, token, viewerId, isActive, fullscreenReelId, onFullscreenReelChange, onPostUpdated, onPostDeleted }) {
     const [summary, setSummary] = useState(null);
     const [actionError, setActionError] = useState('');
     const [actionBusy, setActionBusy] = useState(false);
@@ -182,6 +201,10 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
     const [reactors, setReactors] = useState([]);
     const [shareFriends, setShareFriends] = useState(null);
     const [shareBusy, setShareBusy] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [editVisible, setEditVisible] = useState(false);
+    const [editContent, setEditContent] = useState(post.content || '');
+    const [savingEdit, setSavingEdit] = useState(false);
     const longPressed = useRef(false);
     const lastContentTap = useRef(0);
     const likeBurst = useRef(new Animated.Value(0)).current;
@@ -194,6 +217,43 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
         getPostSummary(token, post.id, controller.signal).then(setSummary).catch(() => {});
         return () => controller.abort();
     }, [post.id, token]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        getSavedPostState(token, post.id, controller.signal).then(setSaved).catch(() => {});
+        return () => controller.abort();
+    }, [post.id, token]);
+
+    async function toggleSaved() {
+        try {
+            if (saved) await unsavePost(token, post.id);
+            else await savePost(token, post.id);
+            setSaved(!saved);
+            setOptionsVisible(false);
+        } catch (cause) { setActionError(cause.message || 'Could not update saved moments.'); }
+    }
+
+    async function submitEdit() {
+        const content = editContent.trim();
+        if (!content) { setActionError('Add a caption before saving.'); return; }
+        setSavingEdit(true); setActionError('');
+        try {
+            const updated = await updatePost(token, post.id, content);
+            onPostUpdated?.(updated);
+            setEditVisible(false);
+        } catch (cause) { setActionError(cause.message || 'Could not update this moment.'); }
+        finally { setSavingEdit(false); }
+    }
+
+    function confirmDelete() {
+        Alert.alert('Delete this moment?', 'It will be removed from WindChime. You can’t undo this.', [
+            { text: 'Keep moment', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: async () => {
+                try { await deletePost(token, post.id); onPostDeleted?.(post.id); }
+                catch (cause) { setActionError(cause.message || 'Could not delete this moment.'); }
+            } },
+        ]);
+    }
 
     async function toggleReaction() {
         if (actionBusy) return;
@@ -300,16 +360,17 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
             </View>
             <Text style={styles.postLabel}>A SHARED MOMENT</Text>
             {post.content ? <Pressable onPress={doubleTapContent}><Text style={styles.postText}>{post.content}</Text></Pressable> : null}
-            {media.length ? <MediaCarousel post={post} token={token} isActive={isActive} fullscreenReelId={fullscreenReelId} onFullscreenReelChange={onFullscreenReelChange} onNextReel={onNextReel} onDoubleTap={likeFromDoubleTap} reaction={summary?.reaction?.my_reaction?.type} reactionCount={summary?.reaction?.total || 0} commentCount={summary?.comments?.total || 0} reshareCount={summary?.repost?.total || 0} onLike={toggleReaction} onReact={chooseReaction} onComments={() => router.push(`/posts/${post.id}`)} onReshare={toggleReshare} onShare={openShare} onSeeReactions={showReactors} onReport={async (reason) => { try { await sendReport(token, { target_type: 'post', target_id: post.id, reason }); Alert.alert('Report sent', 'Thanks for helping keep WindChime safe.'); } catch (cause) { setActionError(cause.message || 'Could not send this report.'); } }} onError={() => setActionError('This photo could not load. Check that the Social service is running and the media belongs to this post.')} /> : null}
+            {media.length ? <MediaCarousel post={post} token={token} isActive={isActive} fullscreenReelId={post.kind === 'reel' ? fullscreenReelId : undefined} onFullscreenReelChange={post.kind === 'reel' ? onFullscreenReelChange : undefined} onDoubleTap={likeFromDoubleTap} reaction={summary?.reaction?.my_reaction?.type} reactionCount={summary?.reaction?.total || 0} commentCount={summary?.comments?.total || 0} reshareCount={summary?.repost?.total || 0} viewCount={summary?.views?.views ?? post.views_count ?? 0} onLike={toggleReaction} onReact={chooseReaction} onComments={() => router.push(`/posts/${post.id}`)} onReshare={toggleReshare} onShare={openShare} onSeeReactions={showReactors} onReport={async (reason) => { try { await sendReport(token, { target_type: 'post', target_id: post.id, reason }); Alert.alert('Report sent', 'Thanks for helping keep WindChime safe.'); } catch (cause) { setActionError(cause.message || 'Could not send this report.'); } }} onError={() => setActionError('This photo could not load. Check that the Social service is running and the media belongs to this post.')} /> : null}
             {post.kind === 'reel' ? <View style={styles.kindPill}><Text style={styles.kindText}>REEL</Text></View> : null}
             {actionError ? <Text style={styles.actionError}>{actionError}</Text> : null}
             <View style={styles.actionRow}>
-                <Pressable disabled={actionBusy} onPress={() => { if (longPressed.current) { longPressed.current = false; return; } setReactionPicker(false); toggleReaction(); }} onLongPress={() => { longPressed.current = true; setReactionPicker(true); }} delayLongPress={380} style={styles.socialAction}><ReactionIcon type={summary?.reaction?.my_reaction?.type || 'like'} size={20} color={summary?.reaction?.my_reaction ? undefined : colors.green} /><Text style={[styles.socialActionText, summary?.reaction?.my_reaction && styles.socialActionActive]}>{summary?.reaction?.total ?? 'Like'}</Text></Pressable>
-                <Pressable onPress={() => router.push(`/posts/${post.id}`)} style={styles.socialAction}><Text style={styles.socialIcon}>◌</Text><Text style={styles.socialActionText}>{summary?.comments?.total ?? 'Comment'}</Text></Pressable>
-                <Pressable disabled={actionBusy} onPress={toggleReshare} style={styles.socialAction}><Text style={styles.socialIcon}>⇄</Text><Text style={[styles.socialActionText, summary?.repost?.reposted && styles.socialActionActive]}>{summary?.repost?.total ?? 0} Share</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Like, ${summary?.reaction?.total || 0} reactions`} disabled={actionBusy} onPress={() => { if (longPressed.current) { longPressed.current = false; return; } setReactionPicker(false); toggleReaction(); }} onLongPress={() => { longPressed.current = true; setReactionPicker(true); }} delayLongPress={380} style={styles.socialAction}><ReactionIcon type={summary?.reaction?.my_reaction?.type || 'like'} size={20} color={summary?.reaction?.my_reaction ? undefined : colors.green} /><Text style={[styles.socialActionText, summary?.reaction?.my_reaction && styles.socialActionActive]}>{summary?.reaction?.total || 0}</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Comments, ${summary?.comments?.total || 0}`} onPress={() => router.push(`/posts/${post.id}`)} style={styles.socialAction}><SymbolView name={{ ios: 'bubble.right', android: 'chat_bubble_outline', web: 'chat_bubble_outline' }} tintColor={colors.green} size={20} /><Text style={styles.socialActionText}>{summary?.comments?.total || 0}</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Reshare, ${summary?.repost?.total || 0}`} disabled={actionBusy} onPress={toggleReshare} style={styles.socialAction}><SymbolView name={{ ios: 'arrow.2.squarepath', android: 'repeat', web: 'repeat' }} tintColor={summary?.repost?.reposted ? colors.ink : colors.green} size={20} /><Text style={[styles.socialActionText, summary?.repost?.reposted && styles.socialActionActive]}>{summary?.repost?.total || 0}</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel="Send to a friend" onPress={openShare} style={styles.socialAction}><SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} tintColor={colors.green} size={19} /></Pressable>
+                <View accessibilityRole="text" accessibilityLabel={`${summary?.views?.views ?? post.views_count ?? 0} views`} style={styles.socialAction}><SymbolView name={{ ios: 'eye', android: 'visibility', web: 'visibility' }} tintColor={colors.muted} size={19} /><Text style={styles.socialActionText}>{summary?.views?.views ?? post.views_count ?? 0}</Text></View>
             </View>
             {reactionPicker ? <View style={styles.reactionPicker}>{['like', 'love', 'laugh', 'sad', 'angry'].map((type) => <Pressable key={type} accessibilityLabel={`${type} reaction`} onPress={() => chooseReaction(type)} style={styles.reactionChoice}><ReactionIcon type={type} size={24} /></Pressable>)}</View> : null}
-            <View style={styles.postFooter}><Text style={styles.footerHint}>A moment shared</Text><Text style={styles.postDate}>{time} ago</Text></View>
             <Animated.View pointerEvents="none" style={{ position: 'absolute', top: '36%', left: 0, right: 0, alignItems: 'center', zIndex: 10, opacity: likeBurst, transform: [{ scale: likeBurst.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1.2] }) }] }}>
                 <ReactionIcon type="like" size={96} color="#fff" />
             </Animated.View>
@@ -320,9 +381,27 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
                         <View style={sheetHandle} />
                         <Text style={sheetTitle}>Moment options</Text>
                         <Pressable onPress={() => { setOptionsVisible(false); openShare(); }} style={sheetRow}><SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} tintColor={colors.green} size={20} /><Text style={sheetText}>Share in a message</Text></Pressable>
+                        <Pressable onPress={toggleSaved} style={sheetRow}><SymbolView name={{ ios: saved ? 'bookmark.fill' : 'bookmark', android: saved ? 'bookmark' : 'bookmark_border', web: saved ? 'bookmark' : 'bookmark_border' }} tintColor={colors.green} size={20} /><Text style={sheetText}>{saved ? 'Remove from saved' : 'Save for later'}</Text></Pressable>
                         <Pressable onPress={showReactors} style={sheetRow}><SymbolView name={{ ios: 'heart', android: 'favorite_border', web: 'favorite_border' }} tintColor={colors.green} size={20} /><Text style={sheetText}>See all reactions <Text style={sheetHint}>· {summary?.reaction?.total || 0}</Text></Text></Pressable>
-                        <Pressable onPress={reportPost} style={sheetRow}><SymbolView name={{ ios: 'flag', android: 'outlined_flag', web: 'outlined_flag' }} tintColor={colors.danger} size={20} /><Text style={[sheetText, { color: colors.danger }]}>Report moment</Text></Pressable>
+                        {post.creator_id === viewerId ? <>
+                            <Pressable onPress={() => { setEditContent(post.content || ''); setOptionsVisible(false); setEditVisible(true); }} style={sheetRow}><SymbolView name={{ ios: 'pencil', android: 'edit', web: 'edit' }} tintColor={colors.green} size={20} /><Text style={sheetText}>Edit caption</Text></Pressable>
+                            <Pressable onPress={() => { setOptionsVisible(false); confirmDelete(); }} style={sheetRow}><SymbolView name={{ ios: 'trash', android: 'delete_outline', web: 'delete_outline' }} tintColor={colors.danger} size={20} /><Text style={[sheetText, { color: colors.danger }]}>Delete moment</Text></Pressable>
+                        </> : <Pressable onPress={reportPost} style={sheetRow}><SymbolView name={{ ios: 'flag', android: 'outlined_flag', web: 'outlined_flag' }} tintColor={colors.danger} size={20} /><Text style={[sheetText, { color: colors.danger }]}>Report moment</Text></Pressable>}
                         <Pressable onPress={() => setOptionsVisible(false)} style={sheetClose}><Text style={sheetCloseText}>Cancel</Text></Pressable>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+            <Modal visible={editVisible} transparent animationType="slide" onRequestClose={() => setEditVisible(false)}>
+                <Pressable onPress={() => setEditVisible(false)} style={sheetBackdrop}>
+                    <Pressable onPress={(event) => event.stopPropagation()} style={sheetCard}>
+                        <View style={sheetHandle} />
+                        <Text style={sheetTitle}>Edit your moment</Text>
+                        <TextInput value={editContent} onChangeText={setEditContent} multiline maxLength={2000} placeholder="Add a caption…" placeholderTextColor={colors.muted} textAlignVertical="top" style={{ minHeight: 130, maxHeight: 220, borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 14, marginTop: 12, color: colors.ink, fontSize: 15, lineHeight: 22 }} />
+                        <Text style={{ color: colors.muted, fontSize: 11, textAlign: 'right', marginTop: 6 }}>{editContent.length}/2000</Text>
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                            <Pressable disabled={savingEdit} onPress={() => setEditVisible(false)} style={[sheetClose, { flex: 1, marginTop: 0 }]}><Text style={sheetCloseText}>Cancel</Text></Pressable>
+                            <Pressable disabled={savingEdit} onPress={submitEdit} style={[sheetClose, { flex: 1, marginTop: 0, backgroundColor: colors.ink }]}>{savingEdit ? <ActivityIndicator color={colors.white} /> : <Text style={[sheetCloseText, { color: colors.white }]}>Save changes</Text>}</Pressable>
+                        </View>
                     </Pressable>
                 </Pressable>
             </Modal>

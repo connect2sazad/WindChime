@@ -3,7 +3,8 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View, useWindowD
 import { Image } from 'expo-image';
 import { useIsFocused, router } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { getPostSummary, getMediaUrl, removePostReaction, setPostReaction, removeRepost, setRepost } from '../api/feed.js';
+import { SymbolView } from 'expo-symbols';
+import { getPostSummary, getMediaUrl, recordPostView, removePostReaction, setPostReaction, removeRepost, setRepost } from '../api/feed.js';
 import ReactionIcon from './ReactionIcon.jsx';
 import relativeTime from '../../../shared/utils/relativeTime.js';
 import colors from '../../../styles/colors.js';
@@ -11,7 +12,7 @@ import colors from '../../../styles/colors.js';
 const REACTIONS = ['like', 'love', 'laugh', 'sad', 'angry'];
 
 // Renders profile media without mounting video players; opening a tile opens its post instead.
-export default function ProfilePostCard({ post, token, layout = 'list' }) {
+export default function ProfilePostCard({ post, token, layout = 'list', onOpenReel }) {
     const [summary, setSummary] = useState(null);
     const [busy, setBusy] = useState(false);
     const [picker, setPicker] = useState(false);
@@ -29,6 +30,15 @@ export default function ProfilePostCard({ post, token, layout = 'list' }) {
         getPostSummary(token, post.id).then((value) => { if (alive) setSummary(value); }).catch(() => {});
         return () => { alive = false; };
     }, [isGrid, post.id, token]);
+
+    useEffect(() => {
+        if (!viewerOpen) return undefined;
+        let alive = true;
+        recordPostView(token, post.id).then((views) => {
+            if (alive && views) setSummary((current) => ({ ...(current || {}), views }));
+        }).catch(() => {});
+        return () => { alive = false; };
+    }, [post.id, token, viewerOpen]);
 
     async function react(type = 'like') {
         if (busy) return;
@@ -52,7 +62,7 @@ export default function ProfilePostCard({ post, token, layout = 'list' }) {
 
     const source = media[photoIndex];
     if (isGrid) return <>
-        <Pressable accessibilityRole="button" accessibilityLabel={`View ${post.kind === 'reel' ? 'reel' : 'post media'}`} onPress={() => { setPhotoIndex(0); setViewerOpen(true); }} style={{ width: '32%', aspectRatio: 0.88, borderRadius: 13, overflow: 'hidden', backgroundColor: colors.ink, marginBottom: 5 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`View ${post.kind === 'reel' ? 'reel' : 'post media'}`} onPress={() => { if (post.kind === 'reel' && onOpenReel) { onOpenReel(post.id); return; } setPhotoIndex(0); setViewerOpen(true); }} style={{ width: '32%', aspectRatio: 0.88, borderRadius: 13, overflow: 'hidden', backgroundColor: colors.ink, marginBottom: 5 }}>
             {source?.kind === 'image' ? <Image source={{ uri: getMediaUrl(post.id, source.id), headers: { Authorization: `Bearer ${token}` } }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="memory-disk" /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 7, backgroundColor: '#dce9d3' }}><Text style={{ color: colors.ink, fontSize: 25 }}>{source ? '▶' : '✳'}</Text>{!source ? <Text numberOfLines={4} style={{ color: colors.ink, fontSize: 10, marginTop: 5 }}>{post.content || 'Shared a moment'}</Text> : null}</View>}
             {post.kind === 'reel' || source?.kind === 'video' ? <View style={{ position: 'absolute', top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7, backgroundColor: 'rgba(16,47,52,.8)' }}><Text style={{ color: 'white', fontSize: 9 }}>▶</Text></View> : null}
         </Pressable>
@@ -65,7 +75,7 @@ export default function ProfilePostCard({ post, token, layout = 'list' }) {
             {source?.kind === 'image' ? <View style={{ marginTop: 10, position: 'relative' }}>
                 <Pressable accessibilityRole="button" accessibilityLabel="Open photo" onPress={() => setViewerOpen(true)}><Image source={{ uri: getMediaUrl(post.id, source.id), headers: { Authorization: `Bearer ${token}` } }} style={{ width: '100%', aspectRatio: 0.95, borderRadius: 13, backgroundColor: '#e9eee6' }} contentFit="cover" cachePolicy="memory-disk" /></Pressable>
                 {media.length > 1 ? <View style={{ position: 'absolute', top: 9, right: 9, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10, backgroundColor: 'rgba(23,59,64,.85)' }}><Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{photoIndex + 1}/{media.length}</Text></View> : null}
-            </View> : source ? <Pressable onPress={() => setViewerOpen(true)} accessibilityRole="button" accessibilityLabel={`Play ${post.kind === 'reel' ? 'reel' : 'video'}`} style={{ marginTop: 10, height: 240, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink }}><Text style={{ color: 'white', fontSize: 30 }}>▶</Text><Text style={{ color: 'white', marginTop: 7, fontWeight: '700' }}>{post.kind === 'reel' ? 'Reel' : 'Video'} · tap to play</Text></Pressable> : null}
+            </View> : source ? <Pressable onPress={() => { if (post.kind === 'reel' && onOpenReel) { onOpenReel(post.id); return; } setViewerOpen(true); }} accessibilityRole="button" accessibilityLabel={`Play ${post.kind === 'reel' ? 'reel' : 'video'}`} style={{ marginTop: 10, height: 240, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink }}><Text style={{ color: 'white', fontSize: 30 }}>▶</Text><Text style={{ color: 'white', marginTop: 7, fontWeight: '700' }}>{post.kind === 'reel' ? 'Reel' : 'Video'} · tap to play</Text></Pressable> : null}
         </View>
         {media.length > 1 && source?.kind === 'image' ? <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 }}>
             <Pressable disabled={!photoIndex} onPress={() => setPhotoIndex((value) => value - 1)} hitSlop={8}><Text style={{ color: photoIndex ? colors.green : colors.muted }}>‹ Previous</Text></Pressable>
@@ -80,6 +90,7 @@ export default function ProfilePostCard({ post, token, layout = 'list' }) {
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`${summary?.comments?.total || 0} comments`} onPress={() => router.push(`/posts/${post.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 }}><Text style={{ color: colors.green, fontSize: 19 }}>○</Text><Text style={{ color: colors.ink, fontSize: 11 }}>{summary?.comments?.total ?? 0}</Text></Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Reshare post" onPress={reshare} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 }}><Text style={{ color: colors.green, fontSize: 18 }}>⇄</Text><Text style={{ color: colors.ink, fontSize: 11 }}>{summary?.repost?.total ?? 0}</Text></Pressable>
+            <View accessibilityRole="text" accessibilityLabel={`${summary?.views?.views ?? post.views_count ?? 0} views`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 }}><SymbolView name={{ ios: 'eye', android: 'visibility', web: 'visibility' }} tintColor={colors.green} size={18} /><Text style={{ color: colors.ink, fontSize: 11 }}>{summary?.views?.views ?? post.views_count ?? 0}</Text></View>
             {busy ? <ActivityIndicator size="small" color={colors.green} /> : null}
             <Text style={{ marginLeft: 'auto', color: colors.muted, fontSize: 10 }}>{relativeTime(post.created_at)} ago</Text>
         </View>
