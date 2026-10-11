@@ -1,0 +1,32 @@
+import { StyleSheet } from 'react-native';
+import colors from './colors.js';
+
+export default StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.paper },
+    header: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.white },
+    back: { color: colors.ink, fontSize: 25, marginRight: 12 },
+    title: { color: colors.ink, fontSize: 17, fontWeight: '800' },
+    subtitle: { color: colors.muted, fontSize: 10, marginTop: 3 },
+    list: { padding: 15, paddingBottom: 25 },
+    comment: { flexDirection: 'row', marginBottom: 17 },
+    avatar: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e1eed1' },
+    avatarText: { color: colors.green, fontSize: 12, fontWeight: '800' },
+    body: { flex: 1, marginLeft: 9 },
+    bubble: { alignSelf: 'flex-start', maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 14, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
+    author: { color: colors.ink, fontSize: 10, fontWeight: '800', marginBottom: 3 },
+    text: { color: colors.ink, fontSize: 12, lineHeight: 18 },
+    meta: { flexDirection: 'row', gap: 14, marginTop: 6, marginLeft: 3 },
+    metaButton: { color: colors.muted, fontSize: 10, fontWeight: '700' },
+    nested: { marginTop: 12, marginLeft: 3, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: colors.border },
+    reply: { flexDirection: 'row', marginBottom: 12 },
+    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12, paddingBottom: 8, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.white },
+    input: { flex: 1, maxHeight: 110, minHeight: 42, color: colors.ink, backgroundColor: '#f4f7f0', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10, fontSize: 12 },
+    send: { height: 42, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink, borderRadius: 13 },
+    sendText: { color: colors.white, fontSize: 11, fontWeight: '800' },
+    loading: { minHeight: 150, justifyContent: 'center', alignItems: 'center', gap: 9 },
+    muted: { color: colors.muted, fontSize: 11 },
+    error: { color: colors.danger, fontSize: 11, padding: 12, textAlign: 'center' },
+    empty: { alignItems: 'center', padding: 26 },
+    emptyTitle: { color: colors.ink, fontWeight: '800', fontSize: 14 },
+    emptyText: { color: colors.muted, fontSize: 11, marginTop: 5 },
+});

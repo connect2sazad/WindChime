@@ -15,3 +15,4 @@ const base = (name, port) => (process.env[name] || `http://${host}:${port}/api/v
 export const IDENTITY_API = base('EXPO_PUBLIC_IDENTITY_API_URL', 3101);
 export const SOCIAL_API = base('EXPO_PUBLIC_SOCIAL_API_URL', 3102);
 export const MESSAGES_API = base('EXPO_PUBLIC_MESSAGES_API_URL', 3103);
+export const NOTIFICATIONS_API = base('EXPO_PUBLIC_NOTIFICATIONS_API_URL', 3104);

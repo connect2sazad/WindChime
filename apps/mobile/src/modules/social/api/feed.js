@@ -22,3 +22,90 @@ export async function getDisplayUser(token, id, signal) {
 export function getMediaUrl(postId, mediaId) {
     return `${SOCIAL_API}/posts/${postId}/media/${mediaId}`;
 }
+
+export function getUserPosts(token, userId, signal) {
+    return apiRequest(SOCIAL_API, `/profiles/${userId}/posts?page=1&limit=20`, { token, signal });
+}
+
+export async function createPost(token, content, signal) {
+    const result = await apiRequest(SOCIAL_API, '/posts', {
+        token,
+        method: 'POST',
+        body: { content, kind: 'post' },
+        signal,
+    });
+    return result.data;
+}
+
+export async function createMediaPost(token, content, assets, kind = 'post') {
+    const form = new FormData();
+    form.append('content', content);
+    form.append('kind', kind);
+    for (const [index, asset] of assets.entries()) {
+        const isVideo = asset.type === 'video' || asset.mimeType?.startsWith('video/');
+        const extension = asset.fileName?.split('.').pop()?.toLowerCase() || (isVideo ? 'mp4' : 'jpg');
+        const mimeType = asset.mimeType || (isVideo ? 'video/mp4' : extension === 'png' ? 'image/png' : 'image/jpeg');
+        form.append('media', {
+            uri: asset.uri,
+            name: asset.fileName || `windchime-${Date.now()}-${index}.${extension}`,
+            type: mimeType,
+        });
+    }
+    const result = await apiRequest(SOCIAL_API, '/posts', { token, method: 'POST', body: form, timeoutMs: 120000 });
+    return result.data;
+}
+
+export async function getPostSummary(token, postId, signal) {
+    const [reaction, comments, repost] = await Promise.all([
+        apiRequest(SOCIAL_API, `/posts/${postId}/reactions/summary`, { token, signal }),
+        apiRequest(SOCIAL_API, `/posts/${postId}/comments/summary`, { token, signal }),
+        apiRequest(SOCIAL_API, `/posts/${postId}/repost`, { token, signal }),
+    ]);
+    return {
+        reaction: reaction.data,
+        comments: comments.data,
+        repost: repost.data,
+    };
+}
+
+export const setPostReaction = (token, postId, type = 'like') => apiRequest(
+    SOCIAL_API,
+    `/posts/${postId}/reactions`,
+    { token, method: 'PUT', body: { type } },
+);
+
+export const removePostReaction = (token, postId) => apiRequest(
+    SOCIAL_API,
+    `/posts/${postId}/reactions`,
+    { token, method: 'DELETE' },
+);
+
+export const setRepost = (token, postId) => apiRequest(
+    SOCIAL_API,
+    `/posts/${postId}/repost`,
+    { token, method: 'PUT', body: {} },
+);
+
+export const removeRepost = (token, postId) => apiRequest(
+    SOCIAL_API,
+    `/posts/${postId}/repost`,
+    { token, method: 'DELETE' },
+);
+
+export async function getPostComments(token, postId, signal, parentId = null) {
+    const query = new URLSearchParams({ page: '1', limit: '50', ...(parentId ? { parent_id: String(parentId) } : {}) });
+    return apiRequest(SOCIAL_API, `/posts/${postId}/comments?${query}`, { token, signal });
+}
+
+export async function getCommentSummary(token, postId, signal) {
+    return apiRequest(SOCIAL_API, `/posts/${postId}/comments/summary`, { token, signal });
+}
+
+export async function addPostComment(token, postId, content, parentId = null) {
+    const result = await apiRequest(SOCIAL_API, `/posts/${postId}/comments`, {
+        token,
+        method: 'POST',
+        body: { content, parent_id: parentId },
+    });
+    return result.data;
+}

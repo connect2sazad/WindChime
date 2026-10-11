@@ -7,13 +7,14 @@ export async function apiRequest(base, path, { token, method = 'GET', body, sign
     const abort = () => controller.abort();
     signal?.addEventListener('abort', abort, { once: true });
     try {
+        const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
         const response = await fetch(`${base.replace(/\/$/, '')}${path}`, {
             method,
             headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+                ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
             },
-            ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+            ...(body !== undefined ? { body: isFormData ? body : JSON.stringify(body) } : {}),
             signal: controller.signal,
         });
         if (response.status === 204) return null;

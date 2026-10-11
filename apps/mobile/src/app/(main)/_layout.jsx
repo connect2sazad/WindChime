@@ -1,4 +1,4 @@
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
@@ -12,12 +12,16 @@ export default function MainLayout() {
             headerShown: false,
             tabBarActiveTintColor: colors.ink,
             tabBarInactiveTintColor: colors.muted,
-            tabBarStyle: { height: 62, paddingTop: 7, paddingBottom: 7, backgroundColor: colors.white, borderTopColor: colors.border },
-            tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
+            tabBarStyle: { height: 66, paddingTop: 5, paddingBottom: 6, backgroundColor: colors.white, borderTopColor: colors.border },
+            tabBarLabelStyle: { fontSize: 9, fontWeight: '700' },
+            tabBarIconStyle: { marginBottom: -3 },
         }}>
-            <Tabs.Screen name="index" options={{ title: 'Home' }} />
-            <Tabs.Screen name="chats" options={{ title: 'Messages' }} />
-            <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+            <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 19 }}>⌂</Text> }} />
+            <Tabs.Screen name="connections" options={{ title: 'People', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>♧</Text> }} />
+            <Tabs.Screen name="create" options={{ title: 'Create', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 19 }}>＋</Text> }} />
+            <Tabs.Screen name="chats" options={{ title: 'Messages', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 17 }}>◌</Text> }} />
+            <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 17 }}>♙</Text> }} />
+            <Tabs.Screen name="notifications" options={{ href: null }} />
         </Tabs>
     );
 }

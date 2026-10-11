@@ -2,6 +2,7 @@ import BaseController from './base.controller.js';
 import Models from '../models/registry.js';
 import Schemas from '../schemas/registry.js';
 import utils from '../utils/registry.js';
+import { Op } from 'sequelize';
 
 class PostRepostController extends BaseController {
     constructor() {

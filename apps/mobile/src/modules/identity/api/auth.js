@@ -52,6 +52,15 @@ export async function getCurrentUser(token, signal) {
     return result.data;
 }
 
+export async function updateCurrentProfile(token, changes) {
+    const result = await apiRequest(IDENTITY_API, '/users/me/profile', {
+        token,
+        method: 'PATCH',
+        body: changes,
+    });
+    return result.data;
+}
+
 export async function logout(token) {
     try {
         await apiRequest(IDENTITY_API, '/auth/logout', { token, method: 'PUT' });
