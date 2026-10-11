@@ -28,11 +28,12 @@ export default function PostVideo({ postId, mediaId, token, kind, isActive = fal
     useEffect(() => {
         try {
             player.muted = muted;
-            if (focused && !fullscreen && kind === 'reel' && isActive) player.play();
+            const anotherReelIsFullscreen = fullscreenReelId != null && !fullscreen;
+            if (focused && !anotherReelIsFullscreen && (fullscreen || (kind === 'reel' && isActive))) player.play();
             else player.pause();
         } catch { /* FlatList can release a recycled player before its cleanup effect runs. */ }
         return () => { try { player.pause(); } catch { /* The player may already be released. */ } };
-    }, [focused, fullscreen, isActive, kind, muted, player]);
+    }, [focused, fullscreen, fullscreenReelId, isActive, kind, muted, player]);
     useEffect(() => () => clearTimeout(tapTimer.current), []);
 
     function inlineTap() {
@@ -53,12 +54,12 @@ export default function PostVideo({ postId, mediaId, token, kind, isActive = fal
         {status === 'loading' ? <ActivityIndicator pointerEvents="none" color={colors.white} style={{ position: 'absolute', alignSelf: 'center' }} /> : null}
         {error ? <Text pointerEvents="none" style={{ color: colors.white, position: 'absolute', bottom: 14, left: 12 }}>Video unavailable. Check your connection.</Text> : null}
         <Modal visible={fullscreen} animationType="fade" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => changeFullscreen(false)}>
-            {fullscreen ? <FullscreenPlayer player={player} kind={kind} focused={focused} muted={muted} onToggleMuted={toggleVideoMute} onClose={() => changeFullscreen(false)} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} onLike={onLike} onReact={onReact} onComments={() => { changeFullscreen(false); onComments?.(); }} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : null}
+            {fullscreen ? <FullscreenPlayer player={player} kind={kind} muted={muted} onToggleMuted={toggleVideoMute} onClose={() => changeFullscreen(false)} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} onLike={onLike} onReact={onReact} onComments={() => { changeFullscreen(false); onComments?.(); }} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : null}
         </Modal>
     </View>;
 }
 
-function FullscreenPlayer({ player, kind, focused, muted, onToggleMuted, onClose, onNextReel, reaction, reactionCount, commentCount, reshareCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap }) {
+function FullscreenPlayer({ player, kind, muted, onToggleMuted, onClose, onNextReel, reaction, reactionCount, commentCount, reshareCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap }) {
     const { status, error } = useEvent(player, 'statusChange', { status: player.status });
     const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
     const [menu, setMenu] = useState(false);
@@ -73,7 +74,6 @@ function FullscreenPlayer({ player, kind, focused, muted, onToggleMuted, onClose
         onMoveShouldSetPanResponder: (_, gesture) => kind === 'reel' && Math.abs(gesture.dy) > 28 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.15,
         onPanResponderRelease: (_, gesture) => { if (gesture.dy < -70) onNextReel?.(); },
     }), [kind, onNextReel]);
-    useEffect(() => { try { player.muted = muted; if (focused) player.play(); else player.pause(); } catch { /* The player can be released during a quick close or recycle. */ } }, [focused, muted, player]);
     useEffect(() => () => clearTimeout(tapTimer.current), []);
 
     function videoTap() {
