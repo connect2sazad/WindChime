@@ -70,6 +70,9 @@ export default function LoginScreen() {
                                 </Pressable>
                             </View>
                         </View>
+                        <View style={{ alignItems: 'flex-end', marginTop: -7, marginBottom: 14 }}>
+                            <Link href="/forgot-password" style={{ color: colors.green, fontSize: 12, fontWeight: '700' }}>Forgot password?</Link>
+                        </View>
                         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
                         <Pressable accessibilityRole="button" disabled={busy} onPress={submit} style={({ pressed }) => [styles.button, pressed && !busy && styles.buttonPressed, busy && styles.buttonDisabled]}>
                             {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Sign in <Text style={styles.buttonArrow}>→</Text></Text>}

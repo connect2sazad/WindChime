@@ -8,9 +8,11 @@ import { getConversations } from '../../modules/messages/api/messages.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
+import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
 import styles from '../../styles/messages.styles.js';
 
 export default function ChatsScreen() {
+    const tabSwipe = useMainTabSwipe('/(main)/chats');
     const { session } = useSession();
     const [query, setQuery] = useState('');
     const [search, setSearch] = useState('');
@@ -54,7 +56,7 @@ export default function ChatsScreen() {
     }, [load]));
 
     return (
-        <SafeAreaView style={styles.screen} edges={['top']}>
+        <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
             <FlatList
                 data={rows}
                 keyExtractor={(item) => String(item.id)}

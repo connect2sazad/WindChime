@@ -7,6 +7,7 @@ import { getConnections, getRelationship, getUsers, followUser, respondFriendReq
 import { getDisplayUser } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
+import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
 import styles from '../../styles/connections.styles.js';
 
 const tabs = [
@@ -16,6 +17,7 @@ const tabs = [
 ];
 
 export default function ConnectionsScreen() {
+    const tabSwipe = useMainTabSwipe('/(main)/connections');
     const { session } = useSession();
     const [view, setView] = useState('incoming');
     const [query, setQuery] = useState('');
@@ -102,7 +104,7 @@ export default function ConnectionsScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.screen} edges={['top']}>
+        <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
             <FlatList
                 data={rows}
                 keyExtractor={(item) => String(item.id)}

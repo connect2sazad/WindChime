@@ -2,20 +2,19 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
 import { getConnections } from '../../modules/social/api/connections.js';
-import { getDisplayUser, getMediaUrl, getUserPosts, getUserReshares } from '../../modules/social/api/feed.js';
-import { Image } from 'expo-image';
+import { getDisplayUser, getUserPosts, getUserReshares } from '../../modules/social/api/feed.js';
 import Avatar from '../../shared/components/Avatar.jsx';
-import MediaCarousel from '../../modules/social/components/MediaCarousel.jsx';
-import relativeTime from '../../shared/utils/relativeTime.js';
+import ProfilePostCard from '../../modules/social/components/ProfilePostCard.jsx';
 import { useSession } from '../../shared/session/useSession.js';
-import useUnreadNotifications from '../../modules/notifications/hooks/useUnreadNotifications.js';
 import colors from '../../styles/colors.js';
 import styles from '../../styles/profile.styles.js';
+import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
 
 export default function ProfileScreen() {
+    const tabSwipe = useMainTabSwipe('/(main)/profile');
     const { session, signOut } = useSession();
-    const unreadNotifications = useUnreadNotifications(session?.token);
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -81,9 +80,8 @@ export default function ProfileScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.screen} edges={['top']}>
+        <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.top}><Text style={styles.brand}>windchime <Text style={styles.mark}>✳</Text></Text><Pressable style={styles.topAction} onPress={() => router.push('/(main)/notifications')}><Text style={styles.topActionText}>Notifications{unreadNotifications ? ` · ${unreadNotifications > 99 ? '99+' : unreadNotifications}` : ''}</Text></Pressable></View>
                 <View style={styles.cover}><Text style={styles.coverEyebrow}>YOUR LITTLE CORNER OF WINDCHIME</Text><Text style={styles.coverMark}>✳</Text></View>
                 <View style={styles.profileCard}>
                     <View style={styles.identityRow}>
@@ -108,10 +106,13 @@ export default function ProfileScreen() {
                     {PROFILE_TABS.map(([value, label]) => <Pressable key={value} onPress={() => setContentTab(value)} style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 14, backgroundColor: contentTab === value ? colors.ink : '#e9eee4' }}><Text style={{ color: contentTab === value ? colors.white : colors.ink, fontWeight: '700', fontSize: 10 }}>{label}</Text></Pressable>)}
                 </ScrollView>
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
-                    {['list', 'grid'].map((value) => <Pressable key={value} onPress={() => setLayout(value)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, backgroundColor: layout === value ? '#dce9d3' : colors.white }}><Text style={{ color: colors.ink, fontSize: 11, fontWeight: '700' }}>{value === 'list' ? 'Full posts' : 'Tiles'}</Text></Pressable>)}
+                    {[
+                        ['grid', 'square.grid.2x2.fill', 'grid_view', 'Grid view'],
+                        ['list', 'rectangle.stack.fill', 'view_agenda', 'List view'],
+                    ].map(([value, ios, android, label]) => <Pressable key={value} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: layout === value }} onPress={() => setLayout(value)} style={{ width: 42, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: layout === value ? '#dce9d3' : colors.white, borderWidth: 1, borderColor: colors.border }}><SymbolView name={{ ios, android, web: android }} tintColor={colors.ink} size={18} /></Pressable>)}
                 </View>
                 <View style={styles.sectionRow}><Text style={styles.sectionTitle}>Your moments</Text><Text style={styles.sectionHint}>{stats.posts} shared</Text></View>
-                {loading ? <View style={styles.empty}><ActivityIndicator color={colors.green} /></View> : posts.length ? <View style={layout === 'grid' ? { flexDirection: 'row', flexWrap: 'wrap', gap: 5 } : null}>{posts.map((post) => layout === 'grid' ? <Pressable key={post.id} onPress={() => router.push(`/posts/${post.id}`)} style={{ width: '32%', aspectRatio: 0.9, borderRadius: 10, overflow: 'hidden', backgroundColor: '#e7eee5' }}>{post.media?.[0] ? <Image source={{ uri: getMediaUrl(post.id, post.media[0].id), headers: { Authorization: `Bearer ${session.token}` } }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text numberOfLines={5} style={{ padding: 8, color: colors.ink, fontSize: 10 }}>{post.content || 'Shared a moment'}</Text>}{post.kind === 'reel' ? <Text style={{ position: 'absolute', right: 6, top: 4, color: colors.white, fontWeight: '900' }}>▶</Text> : null}</Pressable> : <View key={post.id} style={styles.post}><Text style={styles.postText}>{post.content || (post.media?.length ? 'Shared a photo or video' : 'Shared a moment')}</Text><MediaCarousel post={post} token={session.token} /><Text style={styles.postMeta}>{relativeTime(post.created_at)} ago · {post.kind === 'reel' ? 'Reel' : 'Post'}</Text></View>)}</View> : <Text style={styles.empty}>{contentTab === 'all' ? 'Your first shared moment will appear here.' : `No ${contentTab} to show yet.`}</Text>}
+                {loading ? <View style={styles.empty}><ActivityIndicator color={colors.green} /></View> : posts.length ? <View style={layout === 'grid' ? { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' } : null}>{posts.map((post) => <ProfilePostCard key={post.id} post={post} token={session.token} layout={layout} />)}</View> : <Text style={styles.empty}>{contentTab === 'all' ? 'Your first shared moment will appear here.' : `No ${contentTab} to show yet.`}</Text>}
                 {hasMorePosts ? <Pressable disabled={busy} onPress={loadMorePosts} style={styles.button}>{busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Load more posts</Text>}</Pressable> : null}
                 <Pressable disabled={busy} onPress={leave} style={[styles.signOut, busy && { opacity: 0.6 }]}>{busy ? <ActivityIndicator color={colors.danger} /> : <Text style={styles.signOutText}>Sign out</Text>}</Pressable>
             </ScrollView>

@@ -6,10 +6,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { createMediaPost, createPost } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
+import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
 import styles from '../../styles/create.styles.js';
 import Avatar from '../../shared/components/Avatar.jsx';
 
 export default function CreateScreen() {
+    const tabSwipe = useMainTabSwipe('/(main)/create');
     const { session } = useSession();
     const [content, setContent] = useState('');
     const [assets, setAssets] = useState([]);
@@ -78,7 +80,7 @@ export default function CreateScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.screen} edges={['top']}>
+        <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                 <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                     <View style={styles.top}><Text style={styles.brand}>windchime ✳</Text><Text style={styles.step}>A MOMENT TO SHARE</Text></View>

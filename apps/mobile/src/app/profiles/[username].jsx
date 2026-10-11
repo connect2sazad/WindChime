@@ -2,15 +2,14 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
+import { SymbolView } from 'expo-symbols';
 import { IDENTITY_API } from '../../shared/config/services.js';
 import { apiRequest } from '../../shared/api/request.js';
 import { getRelationship, sendFriendRequest, followUser, unfollowUser, unfriend, getPublicConnections, respondFriendRequest } from '../../modules/social/api/connections.js';
-import { getMediaUrl, getUserPosts, getUserReshares } from '../../modules/social/api/feed.js';
+import { getUserPosts, getUserReshares } from '../../modules/social/api/feed.js';
 import { startConversation } from '../../modules/messages/api/messages.js';
 import Avatar from '../../shared/components/Avatar.jsx';
-import MediaCarousel from '../../modules/social/components/MediaCarousel.jsx';
-import relativeTime from '../../shared/utils/relativeTime.js';
+import ProfilePostCard from '../../modules/social/components/ProfilePostCard.jsx';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
 
@@ -121,13 +120,9 @@ export default function PublicProfileScreen() {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border }}><Stat count={postTotal} label="Posts" /><Stat count={stats.friends} label="Friends" /><Stat count={stats.followers} label="Followers" /><Stat count={stats.following} label="Following" /></View>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, marginTop: 22, marginBottom: 10 }}>{PROFILE_TABS.map(([value, label]) => <Pressable key={value} onPress={() => setProfileTab(value)} style={[buttonStyle, { backgroundColor: profileTab === value ? colors.ink : '#edf3e8' }]}><Text style={[buttonText, profileTab === value && { color: colors.white }]}>{label}</Text></Pressable>)}</ScrollView>
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>{[['list', 'Full posts'], ['grid', 'Tiles']].map(([value, label]) => <Pressable key={value} onPress={() => setLayoutMode(value)} style={[buttonStyle, { backgroundColor: layoutMode === value ? '#dce9d3' : colors.white }]}><Text style={buttonText}>{label}</Text></Pressable>)}</View>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>{[['grid', 'square.grid.2x2.fill', 'grid_view', 'Grid view'], ['list', 'rectangle.stack.fill', 'view_agenda', 'List view']].map(([value, ios, android, label]) => <Pressable key={value} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: layoutMode === value }} onPress={() => setLayoutMode(value)} style={[buttonStyle, { width: 42, minHeight: 38, paddingHorizontal: 0, backgroundColor: layoutMode === value ? '#dce9d3' : colors.white }]}><SymbolView name={{ ios, android, web: android }} tintColor={colors.ink} size={18} /></Pressable>)}</View>
                 <Text style={{ color: colors.ink, fontSize: 16, fontWeight: '800', marginBottom: 10 }}>{isSelf ? 'Your moments' : `${profile.name.split(' ')[0]}’s moments`}</Text>
-                <View style={layoutMode === 'grid' ? { flexDirection: 'row', flexWrap: 'wrap', gap: 5 } : null}>{posts.map((post) => layoutMode === 'grid' ? <Pressable key={post.id} onPress={() => router.push(`/posts/${post.id}`)} style={{ width: '32%', aspectRatio: 0.9, borderRadius: 10, overflow: 'hidden', backgroundColor: '#e7eee5' }}>{post.media?.[0] ? <Image source={{ uri: getMediaUrl(post.id, post.media[0].id), headers: { Authorization: `Bearer ${token}` } }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text numberOfLines={5} style={{ padding: 8, color: colors.ink, fontSize: 10 }}>{post.content || 'Shared a moment'}</Text>}</Pressable> : <View key={post.id} style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 17, padding: 14, marginBottom: 10 }}>
-                    <Text style={{ color: colors.ink, fontSize: 14, lineHeight: 21 }}>{post.content}</Text>
-                    <MediaCarousel post={post} token={token} onError={() => setError('One or more post media files could not be loaded.')} />
-                    <Text style={{ color: colors.muted, fontSize: 10, marginTop: 8 }}>{relativeTime(post.created_at)} ago</Text>
-                </View>)}</View>
+                <View style={layoutMode === 'grid' ? { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' } : null}>{posts.map((post) => <ProfilePostCard key={post.id} post={post} token={token} layout={layoutMode} />)}</View>
                 {postsHaveMore ? <Pressable disabled={busy} onPress={loadMorePosts} style={[buttonStyle, { marginBottom: 12 }]}><Text style={buttonText}>{busy ? 'Loading…' : 'Load more moments'}</Text></Pressable> : null}
                 {!loading && !posts.length ? <Text style={{ color: colors.muted, textAlign: 'center', padding: 24, backgroundColor: colors.white, borderRadius: 16 }}>No shared moments yet.</Text> : null}
             </> : null}

@@ -17,8 +17,10 @@ import Avatar from '../../shared/components/Avatar.jsx';
 import relativeTime from '../../shared/utils/relativeTime.js';
 import { sendReport } from '../../modules/safety/api/safety.js';
 import useUnreadNotifications from '../../modules/notifications/hooks/useUnreadNotifications.js';
+import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
 
 export default function FeedScreen() {
+    const tabSwipe = useMainTabSwipe('/(main)');
     const { session } = useSession();
     const unreadNotifications = useUnreadNotifications(session?.token);
     const [mode, setMode] = useState('network');
@@ -30,7 +32,6 @@ export default function FeedScreen() {
     const [error, setError] = useState('');
     const [activeReel, setActiveReel] = useState(null);
     const [fullscreenReelId, setFullscreenReelId] = useState(null);
-    const feedList = useRef(null);
     const listViewability = useRef(({ viewableItems }) => {
         const reel = viewableItems.find(({ item }) => item.kind === 'reel' && item.media?.some((asset) => asset.kind === 'video'));
         setActiveReel(reel?.item?.id ?? null);
@@ -42,10 +43,6 @@ export default function FeedScreen() {
         if (!candidates.length) { setFullscreenReelId(null); return; }
         const next = candidates[Math.floor(Math.random() * candidates.length)];
         setFullscreenReelId(next.id);
-        requestAnimationFrame(() => {
-            try { feedList.current?.scrollToIndex({ index: posts.findIndex((post) => post.id === next.id), animated: true, viewPosition: 0.1 }); }
-            catch { feedList.current?.scrollToOffset({ offset: 0, animated: true }); }
-        });
     }, [posts]);
     const requestLock = useRef(false);
     const requestController = useRef(null);
@@ -134,9 +131,8 @@ export default function FeedScreen() {
     const footer = loadingMore ? <ActivityIndicator style={styles.listFooter} color={colors.green} /> : pagination?.has_next_page ? <Pressable style={styles.moreButton} onPress={() => loadPage()}><Text style={styles.moreText}>Load more moments</Text></Pressable> : <Text style={styles.endNote}>{posts.length ? 'You’re all caught up for now.' : ''}</Text>;
 
     return (
-        <SafeAreaView style={styles.screen} edges={['top']}>
+        <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
             <FlatList
-                ref={feedList}
                 data={posts}
                 keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={styles.listContent}
@@ -145,6 +141,10 @@ export default function FeedScreen() {
                 onEndReached={() => { if (pagination?.has_next_page) loadPage(); }}
                 onViewableItemsChanged={listViewability}
                 viewabilityConfig={viewabilityConfig}
+                windowSize={7}
+                initialNumToRender={4}
+                maxToRenderPerBatch={4}
+                removeClippedSubviews={false}
                 ListHeaderComponent={
                     <View>
                         <View style={styles.topline}><View><View style={styles.brandRow}><Text style={styles.brand}>windchime</Text><Text style={styles.brandMark}>✳</Text></View><Text style={styles.greeting}>A little closer, every day</Text></View><Pressable accessibilityRole="button" accessibilityLabel={unreadNotifications ? `Notifications, ${unreadNotifications} unread` : 'Notifications'} onPress={() => router.push('/(main)/notifications')} style={[styles.headerAction, { position: 'relative' }]}><SymbolView name={{ ios: 'bell', android: 'notifications', web: 'notifications' }} tintColor={colors.ink} size={20} />{unreadNotifications ? <View style={{ position: 'absolute', top: -3, right: -4, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger }}><Text style={{ color: colors.white, fontSize: 9, fontWeight: '800' }}>{unreadNotifications > 99 ? '99+' : unreadNotifications}</Text></View> : null}</Pressable></View>
@@ -176,6 +176,10 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
     const [actionError, setActionError] = useState('');
     const [actionBusy, setActionBusy] = useState(false);
     const [reactionPicker, setReactionPicker] = useState(false);
+    const [optionsVisible, setOptionsVisible] = useState(false);
+    const [reactorsVisible, setReactorsVisible] = useState(false);
+    const [reactorsLoading, setReactorsLoading] = useState(false);
+    const [reactors, setReactors] = useState([]);
     const [shareFriends, setShareFriends] = useState(null);
     const [shareBusy, setShareBusy] = useState(false);
     const longPressed = useRef(false);
@@ -267,15 +271,24 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
     }
 
     async function showReactors() {
+        setOptionsVisible(false);
+        setReactorsVisible(true);
+        setReactorsLoading(true);
         try {
             const result = await getPostReactors(token, post.id);
             const users = await Promise.all((result.data || []).map(async (row) => {
                 const user = await getDisplayUser(token, row.creator_id).catch(() => null);
-                return `${row.type}: ${user?.name || 'WindChime member'}${user?.username ? ` · @${user.username}` : ''}`;
+                return { ...row, user };
             }));
-            const names = users.join('\n');
-            Alert.alert(`Reactions · ${summary?.reaction?.total || 0}`, names || 'No reactions yet.');
+            setReactors(users);
         } catch (cause) { setActionError(cause.message || 'Could not load reactions.'); }
+        finally { setReactorsLoading(false); }
+    }
+
+    async function reportPost() {
+        setOptionsVisible(false);
+        try { await sendReport(token, { target_type: 'post', target_id: post.id, reason: 'other' }); Alert.alert('Report sent', 'Thanks for helping keep WindChime safe.'); }
+        catch (cause) { setActionError(cause.message || 'Could not send your report.'); }
     }
 
     return (
@@ -283,7 +296,7 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
             <View style={styles.postHeader}>
                 <Pressable onPress={() => post.author?.username && router.push(`/profiles/${post.author.username}`)}><Avatar user={post.author} token={token} size={39} style={styles.avatar} /></Pressable>
                 <Pressable style={styles.authorBlock} onPress={() => post.author?.username && router.push(`/profiles/${post.author.username}`)}><Text style={styles.authorName} numberOfLines={1}>{authorName}</Text><Text style={styles.authorMeta}>{post.author?.username ? `@${post.author.username}  ·  ` : ''}{time} ago</Text></Pressable>
-                <Pressable accessibilityLabel="Moment options" onPress={() => Alert.alert('Moment options', '', [{ text: 'Share in a message', onPress: openShare }, { text: `See all reactions (${summary?.reaction?.total || 0})`, onPress: showReactors }, { text: 'Report moment', onPress: async () => { try { await sendReport(token, { target_type: 'post', target_id: post.id, reason: 'other' }); Alert.alert('Report sent', 'Thanks for helping keep WindChime safe.'); } catch (cause) { setActionError(cause.message || 'Could not send your report.'); } } }, { text: 'Cancel', style: 'cancel' }])} style={{ paddingHorizontal: 8, paddingVertical: 6 }}><Text style={styles.postMark}>•••</Text></Pressable>
+                <Pressable accessibilityLabel="Moment options" onPress={() => setOptionsVisible(true)} style={{ paddingHorizontal: 8, paddingVertical: 6 }}><Text style={styles.postMark}>•••</Text></Pressable>
             </View>
             <Text style={styles.postLabel}>A SHARED MOMENT</Text>
             {post.content ? <Pressable onPress={doubleTapContent}><Text style={styles.postText}>{post.content}</Text></Pressable> : null}
@@ -301,6 +314,39 @@ function PostCard({ post, token, isActive, fullscreenReelId, onFullscreenReelCha
                 <ReactionIcon type="like" size={96} color="#fff" />
             </Animated.View>
             <Modal visible={shareFriends !== null} transparent animationType="slide" onRequestClose={() => setShareFriends(null)}><Pressable onPress={() => setShareFriends(null)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,.4)' }}><Pressable onPress={(event) => event.stopPropagation()} style={{ maxHeight: '72%', backgroundColor: colors.white, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 18 }}><Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>Send to a friend</Text>{shareBusy ? <ActivityIndicator color={colors.green} /> : <ScrollView>{shareFriends?.map((user) => <Pressable key={user.id} disabled={shareBusy} onPress={() => sendPostToFriend(user)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 }}><Avatar user={user} token={token} size={40} /><View style={{ flex: 1 }}><Text style={{ color: colors.ink, fontWeight: '700' }}>{user.name}</Text><Text style={{ color: colors.muted, fontSize: 11 }}>@{user.username}</Text></View><Text style={{ color: colors.green, fontWeight: '800' }}>Send</Text></Pressable>)}{!shareFriends?.length ? <Text style={{ color: colors.muted, paddingVertical: 16 }}>Become friends with someone to share moments in chat.</Text> : null}</ScrollView>}<Pressable onPress={() => setShareFriends(null)} style={{ alignItems: 'center', padding: 10 }}><Text style={{ color: colors.muted }}>Cancel</Text></Pressable></Pressable></Pressable></Modal>
+            <Modal visible={optionsVisible} transparent animationType="slide" onRequestClose={() => setOptionsVisible(false)}>
+                <Pressable onPress={() => setOptionsVisible(false)} style={sheetBackdrop}>
+                    <Pressable onPress={(event) => event.stopPropagation()} style={sheetCard}>
+                        <View style={sheetHandle} />
+                        <Text style={sheetTitle}>Moment options</Text>
+                        <Pressable onPress={() => { setOptionsVisible(false); openShare(); }} style={sheetRow}><SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} tintColor={colors.green} size={20} /><Text style={sheetText}>Share in a message</Text></Pressable>
+                        <Pressable onPress={showReactors} style={sheetRow}><SymbolView name={{ ios: 'heart', android: 'favorite_border', web: 'favorite_border' }} tintColor={colors.green} size={20} /><Text style={sheetText}>See all reactions <Text style={sheetHint}>· {summary?.reaction?.total || 0}</Text></Text></Pressable>
+                        <Pressable onPress={reportPost} style={sheetRow}><SymbolView name={{ ios: 'flag', android: 'outlined_flag', web: 'outlined_flag' }} tintColor={colors.danger} size={20} /><Text style={[sheetText, { color: colors.danger }]}>Report moment</Text></Pressable>
+                        <Pressable onPress={() => setOptionsVisible(false)} style={sheetClose}><Text style={sheetCloseText}>Cancel</Text></Pressable>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+            <Modal visible={reactorsVisible} transparent animationType="slide" onRequestClose={() => setReactorsVisible(false)}>
+                <Pressable onPress={() => setReactorsVisible(false)} style={sheetBackdrop}>
+                    <Pressable onPress={(event) => event.stopPropagation()} style={sheetCard}>
+                        <View style={sheetHandle} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}><View><Text style={sheetTitle}>Reactions</Text><Text style={sheetHint}>{reactors.length || summary?.reaction?.total || 0} people reacted</Text></View><Pressable onPress={() => setReactorsVisible(false)} style={sheetDismiss}><Text style={{ color: colors.green, fontWeight: '800' }}>Done</Text></Pressable></View>
+                        {reactorsLoading ? <ActivityIndicator color={colors.green} style={{ padding: 22 }} /> : <ScrollView style={{ maxHeight: 390 }}>{reactors.length ? reactors.map((row, index) => <View key={`${row.creator_id}-${row.type}-${index}`} style={reactorRow}><ReactionIcon type={row.type} size={23} /><Avatar user={row.user} token={token} size={40} /><View style={{ flex: 1 }}><Text style={sheetText}>{row.user?.name || 'WindChime member'}</Text><Text style={sheetHint}>{row.user?.username ? `@${row.user.username}` : 'WindChime member'}</Text></View></View>) : <Text style={sheetHint}>No reactions yet. Be the first to react.</Text>}</ScrollView>}
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
+
+const sheetBackdrop = { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(3,14,15,.48)' };
+const sheetCard = { backgroundColor: colors.white, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, borderTopLeftRadius: 24, borderTopRightRadius: 24 };
+const sheetHandle = { alignSelf: 'center', width: 38, height: 4, borderRadius: 3, backgroundColor: '#cbd6ca', marginBottom: 16 };
+const sheetTitle = { color: colors.ink, fontSize: 18, fontWeight: '800', marginBottom: 4 };
+const sheetRow = { minHeight: 55, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 13 };
+const sheetText = { color: colors.ink, fontSize: 14, fontWeight: '700' };
+const sheetHint = { color: colors.muted, fontSize: 12 };
+const sheetClose = { minHeight: 46, marginTop: 12, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#edf2e9' };
+const sheetCloseText = { color: colors.ink, fontSize: 13, fontWeight: '800' };
+const sheetDismiss = { paddingHorizontal: 13, paddingVertical: 9, backgroundColor: '#edf2e9', borderRadius: 12 };
+const reactorRow = { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 11, borderBottomWidth: 1, borderBottomColor: colors.border };

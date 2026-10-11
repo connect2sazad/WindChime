@@ -38,6 +38,24 @@ export async function verifyRegistration(verificationId, code) {
     return sessionFrom(result.data);
 }
 
+export async function requestPasswordReset(email) {
+    const result = await apiRequest(IDENTITY_API, '/auth/password/forgot', {
+        method: 'POST',
+        body: { email: email.trim().toLowerCase() },
+        timeoutMs: 30000,
+    });
+    return result.data;
+}
+
+export async function resetPassword(email, code, password, confirmPassword) {
+    const result = await apiRequest(IDENTITY_API, '/auth/password/reset', {
+        method: 'POST',
+        body: { email: email.trim().toLowerCase(), code: code.trim(), password, confirm_password: confirmPassword },
+        timeoutMs: 30000,
+    });
+    return result.data;
+}
+
 export async function resendRegistration(verificationId) {
     const result = await apiRequest(IDENTITY_API, '/auth/register/resend', {
         method: 'POST',
