@@ -1,6 +1,9 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Avatar from '../../shared/components/Avatar.jsx';
+import relativeTime from '../../shared/utils/relativeTime.js';
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../../modules/notifications/api/notifications.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
@@ -65,8 +68,22 @@ export default function NotificationsScreen() {
         } catch (cause) { setError(cause.message || 'Could not mark notifications as read.'); }
     }
 
+    async function openNotification(item) {
+        await markOne(item);
+        if (item.type === 'friend.request') router.push('/(main)/connections');
+        else if (item.type === 'friend.accepted' || item.type === 'follow.created') {
+            if (item.actor?.username) router.push(`/profiles/${item.actor.username}`);
+            else router.push('/(main)/connections');
+        } else if (item.type?.startsWith('post.') || item.type?.startsWith('comment.')) {
+            const postId = item.context?.post_id || (item.target_type === 'post' ? item.target_id : null);
+            if (postId) router.push(`/posts/${postId}`);
+        } else if (item.type?.startsWith('message.') && item.target_id && item.actor_id) {
+            router.push({ pathname: '/conversations/[id]', params: { id: String(item.target_id), peer_id: String(item.actor_id) } });
+        } else if (item.type?.startsWith('message.')) router.push('/(main)/chats');
+    }
+
     return (
-        <View style={styles.screen}>
+        <SafeAreaView style={styles.screen} edges={['top']}>
             <FlatList
                 data={rows}
                 keyExtractor={(item) => String(item.id)}
@@ -78,13 +95,13 @@ export default function NotificationsScreen() {
                     {error ? <Text style={styles.error}>{error}</Text> : null}
                     {loading && !rows.length ? <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.centerText}>Checking what’s new…</Text></View> : null}
                 </>}
-                renderItem={({ item }) => <Pressable onPress={() => markOne(item)} style={[styles.row, !item.read_at && styles.unreadRow]}>
-                    <View style={styles.avatar}><Text style={styles.avatarText}>{(item.actor?.name || 'W').trim().slice(0, 1).toUpperCase()}</Text></View>
-                    <View style={styles.body}><Text style={styles.message}><Text style={{ fontWeight: '800' }}>{item.actor?.name || 'WindChime member'}</Text> {messageFor(item.type)}</Text><Text style={styles.time}>{new Date(item.occurred_at || item.created_at).toLocaleString()}</Text></View>
+                renderItem={({ item }) => <Pressable onPress={() => openNotification(item)} style={[styles.row, !item.read_at && styles.unreadRow]}>
+                    <Avatar user={item.actor} token={session.token} size={42} style={styles.avatar} />
+                    <View style={styles.body}><Text style={styles.message}><Text style={{ fontWeight: '800' }}>{item.actor?.name || 'WindChime member'}</Text> {messageFor(item.type)}</Text><Text style={styles.time}>{relativeTime(item.occurred_at || item.created_at)} ago</Text></View>
                     {!item.read_at ? <View style={styles.unreadDot} /> : null}
                 </Pressable>}
                 ListEmptyComponent={!loading && !error ? <View style={styles.empty}><Text style={styles.emptyMark}>✳</Text><Text style={styles.emptyTitle}>Your corner is quiet.</Text><Text style={styles.emptyText}>New friend requests and conversations will show up here.</Text></View> : null}
             />
-        </View>
+        </SafeAreaView>
     );
 }

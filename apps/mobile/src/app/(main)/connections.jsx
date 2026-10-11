@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Avatar from '../../shared/components/Avatar.jsx';
 import { getConnections, getRelationship, getUsers, followUser, respondFriendRequest, sendFriendRequest, unfriend, unfollowUser } from '../../modules/social/api/connections.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
@@ -32,7 +34,7 @@ export default function ConnectionsScreen() {
                     try {
                         const [relationship, avatar] = await Promise.all([
                             getRelationship(session.token, user.id, signal),
-                            Promise.resolve(user),
+                            getDisplayUser(session.token, user.id, signal),
                         ]);
                         return { ...avatar, relationship: relationship.data };
                     } catch { return { ...user, relationship: null }; }
@@ -82,8 +84,8 @@ export default function ConnectionsScreen() {
         const busy = busyId === item.id;
         return (
             <View style={styles.row}>
-                <View style={styles.avatar}><Text style={styles.avatarText}>{(user.name || 'W').trim().slice(0, 1).toUpperCase()}</Text></View>
-                <View style={styles.details}><Text style={styles.name} numberOfLines={1}>{user.name || 'WindChime member'}</Text><Text style={styles.handle}>@{user.username || 'member'}</Text>{incoming ? <Text style={styles.note}>Wants to connect with you</Text> : null}</View>
+                <Pressable onPress={() => user.username && router.push(`/profiles/${user.username}`)}><Avatar user={user} token={session.token} size={42} style={styles.avatar} /></Pressable>
+                <Pressable style={styles.details} onPress={() => user.username && router.push(`/profiles/${user.username}`)}><Text style={styles.name} numberOfLines={1}>{user.name || 'WindChime member'}</Text><Text style={styles.handle}>@{user.username || 'member'}</Text>{incoming ? <Text style={styles.note}>Wants to connect with you</Text> : null}</Pressable>
                 {incoming ? (
                     <View style={styles.actions}>
                         <Action title="Accept" disabled={busy} onPress={() => act(item, 'accept')} />
@@ -100,7 +102,7 @@ export default function ConnectionsScreen() {
     }
 
     return (
-        <View style={styles.screen}>
+        <SafeAreaView style={styles.screen} edges={['top']}>
             <FlatList
                 data={rows}
                 keyExtractor={(item) => String(item.id)}
@@ -118,7 +120,7 @@ export default function ConnectionsScreen() {
                 renderItem={({ item }) => renderRow(item)}
                 ListEmptyComponent={!loading && !error ? <View style={styles.empty}><Text style={styles.emptyMark}>✳</Text><Text style={styles.emptyTitle}>{view === 'incoming' ? 'No requests right now' : view === 'friends' ? 'Your friend list is growing' : 'No people found'}</Text><Text style={styles.muted}>{view === 'find' ? 'Try a different name or username.' : 'Check back when someone reaches out.'}</Text></View> : null}
             />
-        </View>
+        </SafeAreaView>
     );
 }
 

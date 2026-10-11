@@ -14,6 +14,9 @@ export const getUsers = (token, search, signal) => {
 export const getRelationship = (token, userId, signal) =>
     apiRequest(SOCIAL_API, `/connections/${userId}`, { token, signal });
 
+export const getPublicConnections = (token, userId, view, signal) =>
+    apiRequest(SOCIAL_API, `/profiles/${userId}/connections?view=${encodeURIComponent(view)}&page=1&limit=30`, { token, signal });
+
 export const sendFriendRequest = (token, userId) => apiRequest(SOCIAL_API, '/friendships/requests', {
     token, method: 'POST', body: { recipient_id: userId },
 });

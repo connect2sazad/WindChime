@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Avatar from '../../shared/components/Avatar.jsx';
+import relativeTime from '../../shared/utils/relativeTime.js';
 import { addPostComment, getCommentSummary, getDisplayUser, getPostComments } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
@@ -102,11 +104,11 @@ function CommentThread({ item, count, token, postId, onReply }) {
 
     return (
         <View style={styles.comment}>
-            <View style={styles.avatar}><Text style={styles.avatarText}>{(item.author?.name || 'W').trim().slice(0, 1).toUpperCase()}</Text></View>
+            <Avatar user={item.author} token={token} size={38} style={styles.avatar} />
             <View style={styles.body}>
                 <View style={styles.bubble}><Text style={styles.author}>{item.author?.name || 'WindChime member'}</Text><Text style={styles.text}>{item.content}</Text></View>
-                <View style={styles.meta}><Text style={styles.metaButton}>{new Date(item.created_at).toLocaleDateString()}</Text><Text onPress={onReply} style={styles.metaButton}>Reply</Text>{canExpand ? <Text onPress={toggleReplies} style={styles.metaButton}>{loadingReplies ? 'Loading…' : expanded ? 'Hide replies' : `View ${count} ${count === 1 ? 'reply' : 'replies'}`}</Text> : null}</View>
-                {expanded ? <View style={styles.nested}>{replies.map((reply) => <View key={reply.id} style={styles.reply}><View style={[styles.avatar, { width: 28, height: 28, borderRadius: 10 }]}><Text style={[styles.avatarText, { fontSize: 10 }]}>{(reply.author?.name || 'W').trim().slice(0, 1).toUpperCase()}</Text></View><View style={[styles.body, styles.bubble]}><Text style={styles.author}>{reply.author?.name || 'WindChime member'}</Text><Text style={styles.text}>{reply.content}</Text></View></View>)}</View> : null}
+                <View style={styles.meta}><Text style={styles.metaButton}>{relativeTime(item.created_at)} ago</Text><Text onPress={onReply} style={styles.metaButton}>Reply</Text>{canExpand ? <Text onPress={toggleReplies} style={styles.metaButton}>{loadingReplies ? 'Loading…' : expanded ? 'Hide replies' : `View ${count} ${count === 1 ? 'reply' : 'replies'}`}</Text> : null}</View>
+                {expanded ? <View style={styles.nested}>{replies.map((reply) => <View key={reply.id} style={styles.reply}><Avatar user={reply.author} token={token} size={28} style={[styles.avatar, { borderRadius: 10 }]} /><View style={[styles.body, styles.bubble]}><Text style={styles.author}>{reply.author?.name || 'WindChime member'}</Text><Text style={styles.text}>{reply.content}</Text><Text style={styles.metaButton}>{relativeTime(reply.created_at)} ago</Text></View></View>)}</View> : null}
             </View>
         </View>
     );

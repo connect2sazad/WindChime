@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Avatar from '../../shared/components/Avatar.jsx';
+import relativeTime from '../../shared/utils/relativeTime.js';
 import { getConversations } from '../../modules/messages/api/messages.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
@@ -45,7 +48,7 @@ export default function ChatsScreen() {
     }, [load]));
 
     return (
-        <View style={styles.screen}>
+        <SafeAreaView style={styles.screen} edges={['top']}>
             <FlatList
                 data={rows}
                 keyExtractor={(item) => String(item.id)}
@@ -60,12 +63,12 @@ export default function ChatsScreen() {
                     {loading && !rows.length ? <View style={styles.center}><ActivityIndicator color={colors.green} /><Text style={styles.centerText}>Loading conversations…</Text></View> : null}
                 </>}
                 renderItem={({ item }) => <Pressable style={styles.row} onPress={() => router.push({ pathname: '/conversations/[id]', params: { id: String(item.id), peer_id: String(item.peer_id) } })}>
-                    <View style={styles.avatar}><Text style={styles.avatarText}>{(item.peer?.name || 'W').trim().slice(0, 1).toUpperCase()}</Text></View>
-                    <View style={styles.rowBody}><Text style={styles.person} numberOfLines={1}>{item.peer?.name || 'WindChime member'}</Text><Text style={styles.handle} numberOfLines={1}>{item.peer?.username ? `@${item.peer.username}` : 'Your friend'}</Text><Text style={styles.lastMessage} numberOfLines={1}>{item.last_message?.content || (item.last_message?.shared_post_id ? 'Shared a post' : 'Say hello')}</Text></View>
+                    <Avatar user={item.peer} token={session.token} size={48} style={styles.avatar} />
+                    <View style={styles.rowBody}><Text style={styles.person} numberOfLines={1}>{item.peer?.name || 'WindChime member'}</Text><Text style={styles.handle} numberOfLines={1}>{item.peer?.username ? `@${item.peer.username}` : 'Your friend'}</Text><Text style={styles.lastMessage} numberOfLines={1}>{item.last_message?.content || (item.last_message?.shared_post_id ? 'Shared a post' : 'Say hello')}{item.last_message?.created_at ? ` · ${relativeTime(item.last_message.created_at)}` : ''}</Text></View>
                     {item.unread > 0 ? <View style={styles.unread}><Text style={styles.unreadText}>{item.unread}</Text></View> : null}
                 </Pressable>}
                 ListEmptyComponent={!loading && !error ? <View style={styles.empty}><Text style={styles.emptyMark}>✳</Text><Text style={styles.emptyTitle}>{search ? 'No matches yet.' : 'Your conversations start here.'}</Text><Text style={styles.emptyText}>{search ? 'Try another name or username.' : 'You can message people after you become friends.'}</Text></View> : null}
             />
-        </View>
+        </SafeAreaView>
     );
 }

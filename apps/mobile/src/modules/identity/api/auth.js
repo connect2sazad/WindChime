@@ -61,6 +61,18 @@ export async function updateCurrentProfile(token, changes) {
     return result.data;
 }
 
+export async function uploadCurrentProfilePicture(token, asset) {
+    const form = new FormData();
+    const extension = asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
+    form.append('picture', {
+        uri: asset.uri,
+        name: asset.fileName || `windchime-avatar.${extension}`,
+        type: asset.mimeType || (extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg'),
+    });
+    const result = await apiRequest(IDENTITY_API, '/users/me/picture', { token, method: 'PUT', body: form, timeoutMs: 60000 });
+    return result.data;
+}
+
 export async function logout(token) {
     try {
         await apiRequest(IDENTITY_API, '/auth/logout', { token, method: 'PUT' });

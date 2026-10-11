@@ -23,8 +23,8 @@ export function getMediaUrl(postId, mediaId) {
     return `${SOCIAL_API}/posts/${postId}/media/${mediaId}`;
 }
 
-export function getUserPosts(token, userId, signal) {
-    return apiRequest(SOCIAL_API, `/profiles/${userId}/posts?page=1&limit=20`, { token, signal });
+export function getUserPosts(token, userId, signal, page = 1, type = 'all') {
+    return apiRequest(SOCIAL_API, `/profiles/${userId}/posts?page=${page}&limit=20&type=${type}`, { token, signal });
 }
 
 export async function createPost(token, content, signal) {
