@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Modal, PanResponder, Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useIsFocused } from 'expo-router';
@@ -13,7 +14,7 @@ const frame = { width: '100%', aspectRatio: 0.82, maxHeight: 520, borderRadius: 
 const REACTIONS = ['like', 'love', 'laugh', 'sad', 'angry'];
 const REASONS = [['spam', 'Spam'], ['harassment', 'Harassment'], ['hate', 'Hateful content'], ['sexual_content', 'Sexual content'], ['violence', 'Violence or threats'], ['scam', 'Scam or impersonation'], ['privacy', 'Privacy violation'], ['other', 'Something else']];
 
-export default function PostVideo({ postId, mediaId, token, kind, isActive = false, fullscreenReelId, onFullscreenReelChange, reaction, reactionCount = 0, commentCount = 0, reshareCount = 0, viewCount = 0, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap, onNextReel }) {
+export default function PostVideo({ postId, mediaId, token, kind, hasThumbnail = false, isActive = false, fullscreenReelId, onFullscreenReelChange, reaction, reactionCount = 0, commentCount = 0, reshareCount = 0, viewCount = 0, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap, onNextReel }) {
     const [localFullscreen, setLocalFullscreen] = useState(false);
     const externallyControlled = fullscreenReelId !== undefined;
     const fullscreen = externallyControlled ? fullscreenReelId === postId : localFullscreen;
@@ -25,6 +26,8 @@ export default function PostVideo({ postId, mediaId, token, kind, isActive = fal
     const source = useMemo(() => ({ uri: `${SOCIAL_API}/posts/${postId}/media/${mediaId}`, headers: { Authorization: `Bearer ${token}` } }), [postId, mediaId, token]);
     const player = useVideoPlayer(source, (videoPlayer) => { videoPlayer.loop = kind === 'reel'; videoPlayer.muted = false; });
     const { status, error } = useEvent(player, 'statusChange', { status: player.status });
+    const [posterFailed, setPosterFailed] = useState(false);
+    const showPoster = hasThumbnail && !posterFailed && status !== 'readyToPlay';
 
     useEffect(() => {
         try {
@@ -50,17 +53,18 @@ export default function PostVideo({ postId, mediaId, token, kind, isActive = fal
 
     return <View style={frame}>
         {!fullscreen ? <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={kind !== 'reel'} fullscreenOptions={{ enable: false }} allowsPictureInPicture={false} /> : null}
+        {!fullscreen && showPoster ? <Image pointerEvents="none" source={{ uri: `${source.uri}/thumbnail`, headers: source.headers }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} contentFit="contain" cachePolicy="memory-disk" priority="high" transition={100} onError={() => setPosterFailed(true)} /> : null}
         {kind === 'reel' ? <Pressable accessibilityLabel="Open reel fullscreen; double tap to like" onPress={inlineTap} style={{ position: 'absolute', inset: 0 }} /> : <Pressable accessibilityLabel="Open video fullscreen" onPress={() => changeFullscreen(true)} style={{ position: 'absolute', top: 8, right: 52, width: 38, height: 38, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16,47,52,.78)' }}><SymbolView name={{ ios: 'arrow.up.left.and.arrow.down.right', android: 'fullscreen', web: 'fullscreen' }} tintColor={colors.white} size={19} /></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Turn sound on for all videos' : 'Mute all videos'} onPress={toggleVideoMute} style={{ position: 'absolute', top: 8, right: 8, width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(16,47,52,.78)' }}><SymbolView name={{ ios: muted ? 'speaker.slash.fill' : 'speaker.wave.2.fill', android: muted ? 'volume_off' : 'volume_up', web: muted ? 'volume_off' : 'volume_up' }} tintColor={colors.white} size={19} /></Pressable>
-        {status === 'loading' ? <ActivityIndicator pointerEvents="none" color={colors.white} style={{ position: 'absolute', alignSelf: 'center' }} /> : null}
+        {status === 'loading' && !showPoster ? <ActivityIndicator pointerEvents="none" color={colors.white} style={{ position: 'absolute', alignSelf: 'center' }} /> : null}
         {error ? <Text pointerEvents="none" style={{ color: colors.white, position: 'absolute', bottom: 14, left: 12 }}>Video unavailable. Check your connection.</Text> : null}
         {!externallyControlled ? <Modal visible={fullscreen} animationType="fade" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => changeFullscreen(false)}>
-            {fullscreen ? <FullscreenPlayer player={player} kind={kind} muted={muted} onToggleMuted={toggleVideoMute} onClose={() => changeFullscreen(false)} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} viewCount={viewCount} onLike={onLike} onReact={onReact} onComments={() => { changeFullscreen(false); onComments?.(); }} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : null}
+            {fullscreen ? <FullscreenPlayer player={player} kind={kind} muted={muted} hasThumbnail={hasThumbnail} posterSource={{ uri: `${source.uri}/thumbnail`, headers: source.headers }} onPosterError={() => setPosterFailed(true)} posterFailed={posterFailed} onToggleMuted={toggleVideoMute} onClose={() => changeFullscreen(false)} onNextReel={onNextReel} reaction={reaction} reactionCount={reactionCount} commentCount={commentCount} reshareCount={reshareCount} viewCount={viewCount} onLike={onLike} onReact={onReact} onComments={() => { changeFullscreen(false); onComments?.(); }} onReshare={onReshare} onShare={onShare} onSeeReactions={onSeeReactions} onReport={onReport} onDoubleTap={onDoubleTap} /> : null}
         </Modal> : null}
     </View>;
 }
 
-function FullscreenPlayer({ player, kind, muted, onToggleMuted, onClose, onNextReel, reaction, reactionCount, commentCount, reshareCount, viewCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap }) {
+function FullscreenPlayer({ player, kind, muted, hasThumbnail, posterSource, posterFailed, onPosterError, onToggleMuted, onClose, onNextReel, reaction, reactionCount, commentCount, reshareCount, viewCount, onLike, onReact, onComments, onReshare, onShare, onSeeReactions, onReport, onDoubleTap }) {
     const { status, error } = useEvent(player, 'statusChange', { status: player.status });
     const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
     const [menu, setMenu] = useState(false);
@@ -95,6 +99,7 @@ function FullscreenPlayer({ player, kind, muted, onToggleMuted, onClose, onNextR
 
     return <View {...swipe.panHandlers} style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center' }}>
         <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="contain" nativeControls={false} allowsPictureInPicture={false} />
+        {hasThumbnail && !posterFailed && status !== 'readyToPlay' ? <Image pointerEvents="none" source={posterSource} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} contentFit="contain" cachePolicy="memory-disk" priority="high" transition={100} onError={onPosterError} /> : null}
         <Pressable onPress={videoTap} style={{ position: 'absolute', inset: 0 }} accessibilityLabel="Tap to pause or play; double tap to like" />
         <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'space-between', paddingTop: 48, paddingBottom: 28, paddingHorizontal: 18 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

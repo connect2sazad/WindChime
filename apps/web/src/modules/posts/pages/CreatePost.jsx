@@ -77,11 +77,13 @@ export default function CreatePost({ session }) {
         try {
             if (imageMode) for (const file of list) await checkPhoto(file);
             if (!mounted.current) return;
+            const videoPoster = imageMode ? null : await createVideoPoster(candidate[0]);
+            if (!mounted.current) return;
             clearFiles();
             const entries = candidate.map((file) => {
                 const preview = URL.createObjectURL(file);
                 urls.current.add(preview);
-                return { id: crypto.randomUUID(), file, preview };
+                return { id: crypto.randomUUID(), file, preview, thumbnail: videoPoster };
             });
             setFiles(entries);
             setError('');
@@ -103,6 +105,10 @@ export default function CreatePost({ session }) {
     async function publish(event) {
         event.preventDefault();
         if (pending.current || selecting.current || (!content.trim() && !files.length)) return;
+        if (files.some((item) => item.file.type.startsWith('video/') && !item.thumbnail)) {
+            setError('Could not create a preview for this video. Choose the video again or try another clip.');
+            return;
+        }
         pending.current = true;
         setBusy(true);
         setError('');
@@ -110,6 +116,7 @@ export default function CreatePost({ session }) {
             await createPost(session.token, content.trim(), {
                 kind: mode === 'reel' ? 'reel' : 'post',
                 files: files.map((item) => item.file),
+                thumbnail: files[0]?.thumbnail || null,
             });
             navigate('/', { replace: true });
         } catch (e) {
@@ -247,6 +254,7 @@ export default function CreatePost({ session }) {
                             checking ||
                             (!content.trim() && !files.length) ||
                             (mode !== 'text' && !files.length)
+                            || files.some((item) => item.file.type.startsWith('video/') && !item.thumbnail)
                         }
                     >
                         {busy ? 'Publishing…' : mode === 'reel' ? 'Publish Reel' : 'Publish post'}
@@ -255,4 +263,35 @@ export default function CreatePost({ session }) {
             </section>
         </main>
     );
+}
+
+function createVideoPoster(file) {
+    return new Promise((resolve) => {
+        if (!file || !file.type.startsWith('video/')) return resolve(null);
+        const source = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        video.muted = true;
+        video.preload = 'metadata';
+        video.src = source;
+        const finish = (poster) => { URL.revokeObjectURL(source); resolve(poster); };
+        const timeout = window.setTimeout(() => finish(null), 8000);
+        video.onerror = () => { window.clearTimeout(timeout); finish(null); };
+        video.onloadedmetadata = () => { video.currentTime = Math.min(0.1, Math.max(0, video.duration / 2)); };
+        video.onseeked = () => {
+            try {
+                const sourceWidth = video.videoWidth || 720;
+                const sourceHeight = video.videoHeight || 1280;
+                const scale = Math.min(1, 720 / sourceWidth, 960 / sourceHeight);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+                canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    window.clearTimeout(timeout);
+                    finish(blob ? new File([blob], 'windchime-video-poster.jpg', { type: 'image/jpeg' }) : null);
+                }, 'image/jpeg', 0.82);
+            } catch { window.clearTimeout(timeout); finish(null); }
+        };
+    });
 }

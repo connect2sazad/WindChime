@@ -5,6 +5,7 @@ import { listConnections } from '../../connections/api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 import { forwardMessage } from '../api/index.js';
 import Avatar from '../../profiles/Avatar.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 // Lets the user choose another conversation and forward the selected message.
 export default function ForwardMessageDialog({ message, conversationId, token, onClose }) {
     const dialog = useRef(null);
@@ -134,7 +135,7 @@ export default function ForwardMessageDialog({ message, conversationId, token, o
                         )}
                     </div>
                 ))}
-                {loading && <p role="status">Loading friends…</p>}
+                {loading && <Skeleton count={3} />}
                 {!loading && !friends.length && !error && (
                     <p>Accept a friend request to forward messages.</p>
                 )}

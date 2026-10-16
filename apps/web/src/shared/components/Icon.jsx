@@ -57,6 +57,13 @@ export default function Icon({ name, size = 22 }) {
             </>
         ),
         send: <path d="m22 2-7 20-4-9-9-4Z" />,
+
+        view: (
+            <>
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+            </>
+        ),
     };
 
     return (

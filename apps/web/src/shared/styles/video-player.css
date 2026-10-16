@@ -23,6 +23,15 @@
     background: #102a33;
     cursor: pointer;
 }
+.wc-player-poster {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
 .wc-player-reel {
     aspect-ratio: 9/16;
     max-height: 660px;

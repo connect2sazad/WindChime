@@ -3,6 +3,7 @@ import Models from '../models/registry.js';
 import Schemas from '../schemas/registry.js';
 import utils from '../utils/registry.js';
 import { Op } from 'sequelize';
+import { recordPostInsightEvent } from '../services/post-insights.service.js';
 
 class PostRepostController extends BaseController {
     constructor() {
@@ -43,6 +44,7 @@ class PostRepostController extends BaseController {
                         repost = await this.model.create(where, {
                             transaction,
                         });
+                        await recordPostInsightEvent({ post_id, actor_id: req.auth.id, event_type: 'reshare', transaction });
                     }
 
                     await repost.reload({ transaction });
@@ -73,13 +75,14 @@ class PostRepostController extends BaseController {
             await this.model.sequelize.transaction(async transaction => {
                 const { post_id } = await this.getScope(req, transaction);
 
-                await this.model.destroy({
+                const removed = await this.model.destroy({
                     where: {
                         post_id,
                         creator_id: req.auth.id,
                     },
                     transaction,
                 });
+                if (removed) await recordPostInsightEvent({ post_id, actor_id: req.auth.id, event_type: 'unreshare', transaction });
             });
 
             return res.status(204).send();

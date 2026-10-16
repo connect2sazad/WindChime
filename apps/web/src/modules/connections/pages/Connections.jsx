@@ -5,6 +5,7 @@ import { listConnections, findPeople } from '../api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 import Avatar from '../../profiles/Avatar.js';
 import ConnectionActions from '../Actions.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 const TABS = [
     ['incoming', 'Requests'],
@@ -119,7 +120,7 @@ export default function Connections({ session }) {
                     </label>
                 )}
                 {loading ? (
-                    <p role="status">Finding your people…</p>
+                    <Skeleton count={5} />
                 ) : error ? (
                     <div role="alert">
                         <p>{error}</p>

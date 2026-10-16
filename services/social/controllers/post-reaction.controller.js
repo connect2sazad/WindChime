@@ -4,6 +4,7 @@ import Schemas from '../schemas/registry.js';
 import Models from '../models/registry.js';
 import utils from '../utils/registry.js';
 import errors from '../errors/registry.js';
+import { recordPostInsightEvent } from '../services/post-insights.service.js';
 
 class PostReactionController extends BaseController {
 
@@ -143,6 +144,7 @@ class PostReactionController extends BaseController {
                 });
 
                 const created = !reaction;
+                const changed = Boolean(reaction && reaction.type !== type);
 
                 if (created) {
                     reaction = await this.model.create({
@@ -151,6 +153,10 @@ class PostReactionController extends BaseController {
                     }, { transaction });
                 } else if (reaction.type !== type) {
                     await reaction.update({ type }, { transaction });
+                }
+
+                if (created || changed) {
+                    await recordPostInsightEvent({ post_id, actor_id: req.auth.id, event_type: 'reaction', transaction });
                 }
 
                 await reaction.reload({ transaction });
@@ -183,13 +189,14 @@ class PostReactionController extends BaseController {
 
                 const { post_id } = await this.getScope(req, transaction);
 
-                await this.model.destroy({
+                const removed = await this.model.destroy({
                     where: {
                         post_id,
                         creator_id: req.auth.id,
                     },
                     transaction,
                 });
+                if (removed) await recordPostInsightEvent({ post_id, actor_id: req.auth.id, event_type: 'unreaction', transaction });
 
             });
 

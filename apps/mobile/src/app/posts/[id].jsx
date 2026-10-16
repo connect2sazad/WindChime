@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable,
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 import relativeTime from '../../shared/utils/relativeTime.js';
 import { addPostComment, getCommentSummary, getDisplayUser, getPostComments } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
@@ -61,15 +62,16 @@ export default function PostCommentsScreen() {
 
     return (
         <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={80}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
                 <View style={styles.header}><Pressable onPress={() => router.back()} hitSlop={10}><Text style={styles.back}>‹</Text></Pressable><View><Text style={styles.title}>Conversation</Text><Text style={styles.subtitle}>Comments and replies</Text></View></View>
-                {loading && !comments.length ? <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.muted}>Loading comments…</Text></View> : null}
+                {loading && !comments.length ? <Skeleton count={4} style={{ paddingTop: 10 }} /> : null}
                 {error ? <Text style={styles.error}>{error}</Text> : null}
                 <FlatList
                     data={comments}
                     keyExtractor={(item) => String(item.id)}
                     contentContainerStyle={styles.list}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                     renderItem={({ item }) => <CommentThread item={item} count={replyCounts[item.id] || 0} token={session.token} postId={postId} onReply={() => setActiveParent(item)} />}
                     ListEmptyComponent={!loading && !error ? <View style={styles.empty}><Text style={styles.emptyTitle}>Start the conversation</Text><Text style={styles.emptyText}>Be the first to leave a thoughtful comment.</Text></View> : null}
                 />
@@ -107,7 +109,7 @@ function CommentThread({ item, count, token, postId, onReply }) {
             <Avatar user={item.author} token={token} size={38} style={styles.avatar} />
             <View style={styles.body}>
                 <View style={styles.bubble}><Text style={styles.author}>{item.author?.name || 'WindChime member'}</Text><Text style={styles.text}>{item.content}</Text></View>
-                <View style={styles.meta}><Text style={styles.metaButton}>{relativeTime(item.created_at)} ago</Text><Text onPress={onReply} style={styles.metaButton}>Reply</Text>{canExpand ? <Text onPress={toggleReplies} style={styles.metaButton}>{loadingReplies ? 'Loading…' : expanded ? 'Hide replies' : `View ${count} ${count === 1 ? 'reply' : 'replies'}`}</Text> : null}</View>
+                <View style={styles.meta}><Text style={styles.metaButton}>{relativeTime(item.created_at)} ago</Text><Text onPress={onReply} style={styles.metaButton}>Reply</Text>{canExpand ? <Text onPress={toggleReplies} style={styles.metaButton}>{loadingReplies ? 'Fetching replies…' : expanded ? 'Hide replies' : `View ${count} ${count === 1 ? 'reply' : 'replies'}`}</Text> : null}</View>
                 {expanded ? <View style={styles.nested}>{replies.map((reply) => <View key={reply.id} style={styles.reply}><Avatar user={reply.author} token={token} size={28} style={[styles.avatar, { borderRadius: 10 }]} /><View style={[styles.body, styles.bubble]}><Text style={styles.author}>{reply.author?.name || 'WindChime member'}</Text><Text style={styles.text}>{reply.content}</Text><Text style={styles.metaButton}>{relativeTime(reply.created_at)} ago</Text></View></View>)}</View> : null}
             </View>
         </View>

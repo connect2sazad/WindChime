@@ -32,7 +32,9 @@ router.get(POSTS_ID, Middlewares.identityAuth, (req, res, next) => {
 });
 
 router.get(POSTS_ID_VIEWS, Middlewares.identityAuth, (req, res, next) => Controllers.post_controller.views(req, res, next));
-router.put(POSTS_ID_VIEW, Middlewares.identityAuth, (req, res, next) => Controllers.post_controller.recordView(req, res, next));
+router.put(POSTS_ID_VIEW, Middlewares.identityAuth, (req, res, next) => Controllers.post_insights_controller.track(req, res, next));
+router.post(POSTS_ID + '/insights/events', Middlewares.identityAuth, (req, res, next) => Controllers.post_insights_controller.track(req, res, next));
+router.get(POSTS_ID + '/insights', Middlewares.identityAuth, (req, res, next) => Controllers.post_insights_controller.get(req, res, next));
 
 // update an existing post
 router.patch(POSTS_ID, Middlewares.identityAuth, (req, res, next) => {
@@ -96,6 +98,7 @@ router.get(POSTS_ID_REACTION + '/people', Middlewares.identityAuth,
     (req, res, next) => Controllers.post_reaction_controller.people(req, res, next));
 
 router.get(POSTS_ID + '/media/:media_id',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.media(req,res,next));
+router.get(POSTS_ID + '/media/:media_id/thumbnail',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.mediaThumbnail(req,res,next));
 router.get('/profiles/:user_id/posts',Middlewares.identityAuth,(req,res,next)=>Controllers.post_controller.byAuthor(req,res,next));
 
 export default router;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { listBlocks, unblockUser, announceSafety } from '../api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 import Avatar from '../../profiles/Avatar.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 // Loads the signed-in user’s blocked accounts and supports unblocking them.
 export default function BlockedAccounts({ session }) {
     const [rows, setRows] = useState([]);
@@ -62,7 +63,7 @@ export default function BlockedAccounts({ session }) {
             </p>
             {error && <p role="alert">{error}</p>}
             {loading ? (
-                <p role="status">Loading…</p>
+                <Skeleton count={4} />
             ) : rows.length ? (
                 rows.map((row) => (
                     <article className="wc-blocked-row" key={row.id}>

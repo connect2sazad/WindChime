@@ -13,6 +13,7 @@ import Avatar from '../../profiles/Avatar.js';
 import Icon from '../../../shared/components/Icon.jsx';
 import ProfileLink from '../../profiles/ProfileLink.js';
 import RelativeTime from '../../../shared/components/RelativeTime.jsx';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 // Owns one conversation: message history, pagination, attachments, replies, and sending.
 export default function Conversation({ session, id, onRead, onUnavailable }) {
@@ -275,13 +276,11 @@ export default function Conversation({ session, id, onRead, onUnavailable }) {
                         element.scrollHeight - element.scrollTop - element.clientHeight < 100;
                 }}
             >
-                {loading ? (
-                    <p role="status">Loading conversation…</p>
-                ) : (
+                {loading ? <Skeleton count={4} /> : (
                     older &&
                     items.length > 0 && (
                         <button className="wc-chat-older" disabled={moreBusy} onClick={more}>
-                            {moreBusy ? 'Loading…' : 'Older messages'}
+                            {moreBusy ? <Skeleton variant="inline" /> : 'Older messages'}
                         </button>
                     )
                 )}

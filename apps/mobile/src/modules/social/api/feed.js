@@ -26,6 +26,10 @@ export function getMediaUrl(postId, mediaId) {
     return `${SOCIAL_API}/posts/${postId}/media/${mediaId}`;
 }
 
+export function getMediaThumbnailUrl(postId, mediaId) {
+    return `${getMediaUrl(postId, mediaId)}/thumbnail`;
+}
+
 export function getUserPosts(token, userId, signal, page = 1, type = 'all') {
     return apiRequest(SOCIAL_API, `/profiles/${userId}/posts?page=${page}&limit=20&type=${type}`, { token, signal });
 }
@@ -83,6 +87,17 @@ export async function createMediaPost(token, content, assets, kind = 'post') {
         const file = new File(asset.uri);
         const filename = asset.fileName || `windchime-${Date.now()}-${index}.${mimeType.split('/')[1] === 'jpeg' ? 'jpg' : mimeType.split('/')[1]}`;
         form.append('media', file, filename);
+        if (asset.thumbnailUri) {
+            const thumbnail = new File(asset.thumbnailUri);
+            const signature = new Uint8Array(await thumbnail.slice(0, 16).arrayBuffer());
+            const isPng = signature.length >= 8 && signature[0] === 137 && signature[1] === 80 && signature[2] === 78 && signature[3] === 71;
+            const isWebp = signature.length >= 12 && String.fromCharCode(...signature.slice(0, 4)) === 'RIFF' && String.fromCharCode(...signature.slice(8, 12)) === 'WEBP';
+            const isJpeg = signature.length >= 3 && signature[0] === 255 && signature[1] === 216 && signature[2] === 255;
+            if (!isPng && !isWebp && !isJpeg) throw new Error('The Reel preview image could not be read. Try selecting the video again.');
+            const thumbnailType = isPng ? 'image/png' : isWebp ? 'image/webp' : 'image/jpeg';
+            const thumbnailName = `windchime-poster-${Date.now()}.${thumbnailType.split('/')[1] === 'jpeg' ? 'jpg' : thumbnailType.split('/')[1]}`;
+            form.append('thumbnail', thumbnail, thumbnailName);
+        }
     }
     const result = await apiRequest(SOCIAL_API, '/posts', { token, method: 'POST', body: form, timeoutMs: 120000 });
     return result.data;
@@ -103,15 +118,34 @@ export async function getPostSummary(token, postId, signal) {
     };
 }
 
-export async function recordPostView(token, postId) {
+function insightEventKey(eventType) {
+    if (eventType === 'view') return `view_${Math.floor(Date.now() / (30 * 60 * 1000))}`;
+    return `${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+}
+
+export function recordPostInsight(token, postId, eventType, source = 'feed') {
+    return apiRequest(SOCIAL_API, `/posts/${postId}/insights/events`, {
+        token,
+        method: 'POST',
+        body: { event_type: eventType, source, event_key: insightEventKey(eventType) },
+    });
+}
+
+export async function getPostInsights(token, postId, signal) {
+    const result = await apiRequest(SOCIAL_API, `/posts/${postId}/insights`, { token, signal });
+    return result.data;
+}
+
+export async function recordPostView(token, postId, source = 'feed') {
     const key = `${token}:${postId}`;
     const now = Date.now();
     const lastView = recentViewRequests.get(key);
     if (lastView && now - lastView < 30 * 60 * 1000) return null;
     recentViewRequests.set(key, now);
     try {
-        const result = await apiRequest(SOCIAL_API, `/posts/${postId}/view`, { token, method: 'PUT', body: {} });
-        return result.data;
+        await recordPostInsight(token, postId, 'view', source);
+        const views = await apiRequest(SOCIAL_API, `/posts/${postId}/views`, { token });
+        return views.data;
     } catch (error) {
         recentViewRequests.delete(key);
         throw error;

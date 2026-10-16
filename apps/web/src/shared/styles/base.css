@@ -16,3 +16,17 @@ input {
 a {
     color: inherit;
 }
+@keyframes wc-skeleton-pulse { 50% { opacity: .48; } }
+.wc-skeleton { display: grid; gap: 14px; width: 100%; }
+.wc-skeleton-card { display: grid; gap: 13px; padding: 18px; border: 1px solid #dce7d8; border-radius: 20px; background: #fff; }
+.wc-skeleton-person { display: flex; align-items: center; gap: 11px; }
+.wc-skeleton-person > i, .wc-skeleton-person b, .wc-skeleton-media, .wc-skeleton-line { display: block; background: #e7ede5; animation: wc-skeleton-pulse 1.25s ease-in-out infinite; }
+.wc-skeleton-person > i { width: 42px; height: 42px; border-radius: 50%; }
+.wc-skeleton-person span { display: grid; gap: 8px; }
+.wc-skeleton-person b { width: 125px; height: 10px; border-radius: 8px; }
+.wc-skeleton-person b + b { width: 78px; height: 8px; }
+.wc-skeleton-media { height: 230px; border-radius: 15px; }
+.wc-skeleton-line { height: 10px; border-radius: 8px; }
+.wc-skeleton-line.long { width: 88%; }.wc-skeleton-line.medium { width: 58%; }
+.wc-skeleton-page { max-width: 720px; margin: 20px auto; }
+.wc-skeleton-label { display: inline-block; width: 68px; height: 9px; border-radius: 8px; background: #e7ede5; vertical-align: middle; animation: wc-skeleton-pulse 1.25s ease-in-out infinite; }

@@ -4,6 +4,7 @@ import { videoTime, seekPosition } from '../utils/video.js';
 // Custom accessible player; shared seek helpers keep controls within the video duration.
 export default function VideoPlayer({
     src,
+    poster = '',
     reel = false,
     label = 'Video',
     onError,
@@ -22,6 +23,8 @@ export default function VideoPlayer({
     const [rate, setRate] = useState(1);
     const [loop, setLoop] = useState(reel);
     const [problem, setProblem] = useState('');
+    const [posterVisible, setPosterVisible] = useState(Boolean(poster));
+    useEffect(() => setPosterVisible(Boolean(poster)), [poster]);
     function reveal() {
         setShown(true);
         clearTimeout(hide.current);
@@ -115,6 +118,7 @@ export default function VideoPlayer({
                 playsInline
                 preload="metadata"
                 muted={muted}
+                poster={poster || undefined}
                 loop={loop}
                 controlsList="nodownload noremoteplayback"
                 disablePictureInPicture
@@ -130,6 +134,7 @@ export default function VideoPlayer({
                     );
                     setTime(0);
                 }}
+                onLoadedData={() => setPosterVisible(false)}
                 onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
                 onWaiting={() => setBusy(true)}
                 onCanPlay={() => setBusy(false)}
@@ -152,6 +157,7 @@ export default function VideoPlayer({
                     onError?.();
                 }}
             />
+            {poster && posterVisible && <img className="wc-player-poster" src={poster} alt="" aria-hidden="true" />}
             {watermark && (
                 <span className="wc-player-brand" aria-hidden="true">
                     windchime <span>✳</span>

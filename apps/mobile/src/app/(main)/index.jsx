@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { deletePost, getDisplayUser, getFeed, getPostSummary, getSavedPostState, recordPostView, removePostReaction, removeRepost, savePost, setPostReaction, setRepost, unsavePost, updatePost } from '../../modules/social/api/feed.js';
+import { deletePost, getDisplayUser, getFeed, getPostSummary, getSavedPostState, recordPostInsight, recordPostView, removePostReaction, removeRepost, savePost, setPostReaction, setRepost, unsavePost, updatePost } from '../../modules/social/api/feed.js';
 import { getPostReactors } from '../../modules/social/api/reactions.js';
 import { getConnections } from '../../modules/social/api/connections.js';
 import { sendMessage, startConversation } from '../../modules/messages/api/messages.js';
@@ -14,6 +14,7 @@ import styles from '../../styles/feed.styles.js';
 import MediaCarousel from '../../modules/social/components/MediaCarousel.jsx';
 import ReactionIcon from '../../modules/social/components/ReactionIcon.jsx';
 import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 import relativeTime from '../../shared/utils/relativeTime.js';
 import { sendReport } from '../../modules/safety/api/safety.js';
 import useUnreadNotifications from '../../modules/notifications/hooks/useUnreadNotifications.js';
@@ -137,7 +138,7 @@ export default function FeedScreen() {
         loadPage({ reset: true, pull: true });
     };
 
-    const footer = loadingMore ? <ActivityIndicator style={styles.listFooter} color={colors.green} /> : pagination?.has_next_page ? <Pressable style={styles.moreButton} onPress={() => loadPage()}><Text style={styles.moreText}>Load more moments</Text></Pressable> : <Text style={styles.endNote}>{posts.length ? 'You’re all caught up for now.' : ''}</Text>;
+    const footer = loadingMore ? <Skeleton count={1} style={{ marginHorizontal: 14, marginBottom: 14 }} /> : pagination?.has_next_page ? <Pressable style={styles.moreButton} onPress={() => loadPage()}><Text style={styles.moreText}>Load more moments</Text></Pressable> : <Text style={styles.endNote}>{posts.length ? 'You’re all caught up for now.' : ''}</Text>;
 
     return (
         <SafeAreaView {...tabSwipe} style={styles.screen} edges={['top']}>
@@ -166,7 +167,7 @@ export default function FeedScreen() {
                         </View>
                         <Text style={styles.sectionTitle}>{mode === 'network' ? 'From your corner' : 'A few new voices'}</Text>
                     {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text><Pressable onPress={() => loadPage({ reset: !posts.length })}><Text style={styles.retry}>Try again</Text></Pressable></View> : null}
-                        {loading && !posts.length ? <View style={styles.loadingCard}><ActivityIndicator color={colors.green} /><Text style={styles.loadingText}>Finding your latest moments…</Text></View> : null}
+                        {loading && !posts.length ? <Skeleton variant="feed" count={2} style={{ marginTop: 12 }} /> : null}
                     </View>
                 }
                 renderItem={({ item }) => <PostCard post={item} token={session.token} viewerId={session.user.id} isActive={activeReel === item.id} fullscreenReelId={fullscreenReelId} onFullscreenReelChange={handleFullscreenReelChange} onPostUpdated={(updated) => setPosts((current) => current.map((post) => post.id === updated.id ? { ...post, ...updated } : post))} onPostDeleted={(postId) => setPosts((current) => current.filter((post) => post.id !== postId))} />}
@@ -324,6 +325,7 @@ function PostCard({ post, token, viewerId, isActive, fullscreenReelId, onFullscr
         try {
             const conversation = await startConversation(token, user.id);
             await sendMessage(token, conversation.id, '', [], { postId: post.id });
+            recordPostInsight(token, post.id, 'message_share').catch(() => {});
             setShareFriends(null);
             Alert.alert('Sent', `Shared with ${user.name || user.username}.`);
         } catch (cause) { setActionError(cause.message || 'Could not share this post in a message.'); }
@@ -354,8 +356,8 @@ function PostCard({ post, token, viewerId, isActive, fullscreenReelId, onFullscr
     return (
         <View style={[styles.postCard, { position: 'relative' }]}>
             <View style={styles.postHeader}>
-                <Pressable onPress={() => post.author?.username && router.push(`/profiles/${post.author.username}`)}><Avatar user={post.author} token={token} size={39} style={styles.avatar} /></Pressable>
-                <Pressable style={styles.authorBlock} onPress={() => post.author?.username && router.push(`/profiles/${post.author.username}`)}><Text style={styles.authorName} numberOfLines={1}>{authorName}</Text><Text style={styles.authorMeta}>{post.author?.username ? `@${post.author.username}  ·  ` : ''}{time} ago</Text></Pressable>
+                <Pressable onPress={() => { if (!post.author?.username) return; recordPostInsight(token, post.id, 'profile_open').catch(() => {}); router.push(`/profiles/${post.author.username}`); }}><Avatar user={post.author} token={token} size={39} style={styles.avatar} /></Pressable>
+                <Pressable style={styles.authorBlock} onPress={() => { if (!post.author?.username) return; recordPostInsight(token, post.id, 'profile_open').catch(() => {}); router.push(`/profiles/${post.author.username}`); }}><Text style={styles.authorName} numberOfLines={1}>{authorName}</Text><Text style={styles.authorMeta}>{post.author?.username ? `@${post.author.username}  ·  ` : ''}{time} ago</Text></Pressable>
                 <Pressable accessibilityLabel="Moment options" onPress={() => setOptionsVisible(true)} style={{ paddingHorizontal: 8, paddingVertical: 6 }}><Text style={styles.postMark}>•••</Text></Pressable>
             </View>
             <Text style={styles.postLabel}>A SHARED MOMENT</Text>
@@ -384,6 +386,7 @@ function PostCard({ post, token, viewerId, isActive, fullscreenReelId, onFullscr
                         <Pressable onPress={toggleSaved} style={sheetRow}><SymbolView name={{ ios: saved ? 'bookmark.fill' : 'bookmark', android: saved ? 'bookmark' : 'bookmark_border', web: saved ? 'bookmark' : 'bookmark_border' }} tintColor={colors.green} size={20} /><Text style={sheetText}>{saved ? 'Remove from saved' : 'Save for later'}</Text></Pressable>
                         <Pressable onPress={showReactors} style={sheetRow}><SymbolView name={{ ios: 'heart', android: 'favorite_border', web: 'favorite_border' }} tintColor={colors.green} size={20} /><Text style={sheetText}>See all reactions <Text style={sheetHint}>· {summary?.reaction?.total || 0}</Text></Text></Pressable>
                         {post.creator_id === viewerId ? <>
+                            <Pressable onPress={() => { setOptionsVisible(false); router.push(`/(main)/post-insights?postId=${post.id}`); }} style={sheetRow}><SymbolView name={{ ios: 'chart.bar', android: 'bar_chart', web: 'bar_chart' }} tintColor={colors.green} size={20} /><Text style={sheetText}>View insights</Text></Pressable>
                             <Pressable onPress={() => { setEditContent(post.content || ''); setOptionsVisible(false); setEditVisible(true); }} style={sheetRow}><SymbolView name={{ ios: 'pencil', android: 'edit', web: 'edit' }} tintColor={colors.green} size={20} /><Text style={sheetText}>Edit caption</Text></Pressable>
                             <Pressable onPress={() => { setOptionsVisible(false); confirmDelete(); }} style={sheetRow}><SymbolView name={{ ios: 'trash', android: 'delete_outline', web: 'delete_outline' }} tintColor={colors.danger} size={20} /><Text style={[sheetText, { color: colors.danger }]}>Delete moment</Text></Pressable>
                         </> : <Pressable onPress={reportPost} style={sheetRow}><SymbolView name={{ ios: 'flag', android: 'outlined_flag', web: 'outlined_flag' }} tintColor={colors.danger} size={20} /><Text style={[sheetText, { color: colors.danger }]}>Report moment</Text></Pressable>}

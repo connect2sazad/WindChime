@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { router, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
 import useMainTabSwipe from '../../shared/navigation/useMainTabSwipe.js';
 import { ReelItem } from '../../modules/social/components/ReelExperience.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 
 const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
 export default function ReelsScreen() {
@@ -16,6 +17,7 @@ export default function ReelsScreen() {
     const tabSwipe = useMainTabSwipe('/(main)/reels');
     const [items, setItems] = useState([]);
     const [pageHeight, setPageHeight] = useState(0);
+    const [scrubbing, setScrubbing] = useState(false);
     const listRef = useRef(null);
     const [activeId, setActiveId] = useState(null);
     const [hasMore, setHasMore] = useState(true);
@@ -57,8 +59,9 @@ export default function ReelsScreen() {
         {items.length ? <FlatList
             data={items}
             keyExtractor={(item) => String(item.id)}
-            renderItem={({ item, index }) => <ReelItem post={item} token={session.token} active={screenFocused && item.id === activeId} pageHeight={pageHeight} onEnded={() => { if (index + 1 < items.length) listRef.current?.scrollToIndex({ index: index + 1, animated: true }); }} />}
+            renderItem={({ item, index }) => <ReelItem post={item} token={session.token} active={screenFocused && item.id === activeId} pageHeight={pageHeight} onScrubChange={setScrubbing} onEnded={() => { if (index + 1 < items.length) listRef.current?.scrollToIndex({ index: index + 1, animated: true }); }} />}
             ref={listRef}
+            scrollEnabled={!scrubbing}
             onLayout={(event) => setPageHeight(Math.round(event.nativeEvent.layout.height))}
             pagingEnabled
             snapToInterval={pageHeight || undefined}
@@ -75,13 +78,13 @@ export default function ReelsScreen() {
             maxToRenderPerBatch={2}
             removeClippedSubviews={false}
             getItemLayout={(_, index) => ({ length: pageHeight, offset: pageHeight * index, index })}
-        /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 }}>
-            {loading ? <ActivityIndicator color={colors.lime} /> : <>
+        /> : loading ? <Skeleton variant="reel" style={{ flex: 1 }} /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 }}>
+            <>
                 <SymbolView name={{ ios: 'play.rectangle', android: 'play_circle', web: 'play_circle' }} tintColor={colors.lime} size={42} />
                 <Text style={{ color: 'white', fontSize: 21, fontWeight: '800', marginTop: 15 }}>Reels, at your pace.</Text>
                 <Text style={{ color: '#b7c6c0', textAlign: 'center', lineHeight: 21, marginTop: 7 }}>{error || 'Short videos from people and moments you may like will appear here.'}</Text>
                 <Pressable onPress={() => load(items.length === 0 && hasMore && cursorRef.current === null)} style={{ marginTop: 18, padding: 12 }}><Text style={{ color: colors.lime, fontWeight: '800' }}>{hasMore && !error ? 'Find more Reels' : 'Try again'}</Text></Pressable>
-            </>}
+            </>
         </View>}
     </SafeAreaView>;
 }

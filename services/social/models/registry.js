@@ -44,6 +44,7 @@ import Friendship from './friendship.model.js';
 import Follow from './follow.model.js';
 import PostRepost from './post-repost.model.js';
 import SavedPost from './saved-post.model.js';
+import PostInsightEvent from './post-insight-event.model.js';
 
 const Models = {
     PostMedia,
@@ -55,6 +56,7 @@ const Models = {
     Follow,
     PostRepost,
     SavedPost,
+    PostInsightEvent,
 };
 
 export default Models;

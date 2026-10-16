@@ -4,6 +4,7 @@ import BaseController from './base.controller.js';
 import Models from '../models/registry.js';
 import errors from '../errors/registry.js';
 import utils from '../utils/registry.js';
+import { recordPostInsightEvent } from '../services/post-insights.service.js';
 
 class CommentController extends BaseController {
     constructor() {
@@ -68,6 +69,10 @@ class CommentController extends BaseController {
             const parent=await this.requireParent(values.post_id, values.parent_id, transaction);visibleRecord(req,parent);
         }
         return values;
+    }
+
+    async afterCreate(req, comment, transaction) {
+        await recordPostInsightEvent({ post_id: comment.post_id, actor_id: req.auth.id, event_type: 'comment', transaction });
     }
 
     async getListScope(req) {

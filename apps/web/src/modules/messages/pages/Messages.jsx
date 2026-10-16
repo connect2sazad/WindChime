@@ -6,6 +6,7 @@ import { getDisplayUser } from '../../profiles/api/index.js';
 import Avatar from '../../profiles/Avatar.js';
 
 import RelativeTime from '../../../shared/components/RelativeTime.jsx';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 // Conversation list and search; selecting a row opens the conversation view.
 export default function Messages({ session }) {
@@ -247,7 +248,7 @@ export default function Messages({ session }) {
                             )}
                         </section>
                     )}
-                    {loading && <p role="status">Loading conversations…</p>}
+                    {loading && <Skeleton count={4} />}
                     {error && (
                         <div role="alert">
                             <p>{error}</p>

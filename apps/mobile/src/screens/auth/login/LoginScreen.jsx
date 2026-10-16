@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Link, Redirect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../../shared/session/useSession.js';
 import colors from '../../../styles/colors.js';
 import styles from './login.styles.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 export default function LoginScreen() {
     const { session, ready, signIn } = useSession();
@@ -14,7 +15,7 @@ export default function LoginScreen() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
 
-    if (!ready) return <View style={styles.loading}><ActivityIndicator color={colors.primary} /></View>;
+    if (!ready) return <View style={[styles.loading, { justifyContent: 'center', padding: 22 }]}><Skeleton variant="profile" /></View>;
     if (session) return <Redirect href="/(main)" />;
 
     async function submit() {
@@ -35,7 +36,8 @@ export default function LoginScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
                 <View style={styles.content}>
                     <View style={styles.brandRow}>
                         <Text style={styles.brand}>windchime</Text>
@@ -83,6 +85,7 @@ export default function LoginScreen() {
                         </View>
                     </View>
                 </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

@@ -28,6 +28,14 @@ function encodeFeedCursor(post) {
 class PostController extends BaseController {
  constructor(){super(Models.Post,{schema:Schemas.Post.PostSchema,createSchema:Schemas.Post.PostCreateSchema,updateSchema:Schemas.Post.PostUpdateSchema,
   creator:true,ownerOnly:true,includes:[{model:Models.PostMedia,as:'media'}],searchFields:['content'],idParam:'post_id'});}
+ serialize(record,schema=this.schema){
+  const data=record?.toJSON?record.toJSON():record;const serialized=super.serialize(record,schema);
+  if(Array.isArray(serialized?.media)){
+   const thumbnails=new Map((data?.media||[]).map(item=>[item.id,Boolean(item.thumbnail_filename)]));
+   serialized.media=serialized.media.map(item=>({...item,has_thumbnail:thumbnails.get(item.id)||false}));
+  }
+  return serialized;
+ }
  feedScope(req,mode){
   const viewer=this.parseId(req.auth.id);const scope={status:true};
   if(mode==='network')scope[Op.and]=literal(`(Post.creator_id = ${viewer} OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ${viewer} AND f.following_id = Post.creator_id) OR EXISTS (SELECT 1 FROM friendships fr WHERE fr.status = 'accepted' AND ((fr.user_low_id = ${viewer} AND fr.user_high_id = Post.creator_id) OR (fr.user_high_id = ${viewer} AND fr.user_low_id = Post.creator_id))))`);
@@ -58,13 +66,14 @@ class PostController extends BaseController {
   const files=req.files||[];
   if(!values.content&&!files.length)throw new errors.ValidationException('Write something or add media');
   if(values.kind==='reel'&&(files.length!==1||files[0].mediaKind!=='video'))throw new errors.ValidationException('A Reel requires one video');
+  if(files.some(file=>file.mediaKind==='video')&&!req.thumbnailFile)throw new errors.ValidationException('Could not create a preview for this video. Choose the video again and retry.');
   return values;
  }
  async afterCreate(req,post,transaction){
   if(req.files?.length)await Models.PostMedia.bulkCreate(req.files.map((file,index)=>({post_id:post.id,filename:file.filename,
-   kind:file.mediaKind,mime_type:file.mimetype,size:file.size,sort_order:index})),{transaction});
+   kind:file.mediaKind,mime_type:file.mimetype,size:file.size,thumbnail_filename:file.mediaKind==='video'?req.thumbnailFile?.filename||null:null,sort_order:index})),{transaction});
  }
- async create(req,res,next){return super.create(req,res,error=>{cleanupFiles(req.files||[]).then(()=>next(error));});}
+ async create(req,res,next){return super.create(req,res,error=>{cleanupFiles([...(req.files||[]),req.thumbnailFile].filter(Boolean)).then(()=>next(error));});}
  async media(req,res,next){try{
   const post_id=this.parseId(req.params.post_id);const id=this.parseId(req.params.media_id);
   const post=await Models.Post.findByPk(post_id);if(!post||!post.status)throw new errors.NotFoundException('Post not found');visibleRecord(req,post);
@@ -72,6 +81,14 @@ class PostController extends BaseController {
   res.set({'Content-Type':media.mime_type,'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store','Content-Disposition':'inline','Cross-Origin-Resource-Policy':'same-origin'});
   res.vary('Authorization');
   return res.sendFile(path.join(UPLOAD_DIR,media.filename),{dotfiles:'deny',cacheControl:false,lastModified:false},error=>{if(error&&(req.aborted||res.destroyed||error.code==='ECONNABORTED'))return;if(error){if(error.code==='ENOENT')return next(new errors.NotFoundException('Media file not found'));next(error);}});
+ }catch(e){next(e);}}
+ async mediaThumbnail(req,res,next){try{
+  const post_id=this.parseId(req.params.post_id);const id=this.parseId(req.params.media_id);
+  const post=await Models.Post.findByPk(post_id);if(!post||!post.status)throw new errors.NotFoundException('Post not found');visibleRecord(req,post);
+  const media=await Models.PostMedia.findOne({where:{id,post_id}});const filename=media?.thumbnail_filename;
+  if(!filename||path.basename(filename)!==filename||!/^[a-f0-9-]+\.webp$/.test(filename))throw new errors.NotFoundException('Video thumbnail not found');
+  res.set({'Content-Type':'image/webp','X-Content-Type-Options':'nosniff','Cache-Control':'private, max-age=86400, immutable','Content-Disposition':'inline','Cross-Origin-Resource-Policy':'same-origin'});res.vary('Authorization');
+  return res.sendFile(path.join(UPLOAD_DIR,filename),{dotfiles:'deny',cacheControl:false,lastModified:false},error=>{if(error&&(req.aborted||res.destroyed||error.code==='ECONNABORTED'))return;if(error){if(error.code==='ENOENT')return next(new errors.NotFoundException('Video thumbnail not found'));next(error);}});
  }catch(e){next(e);}}
  async byAuthor(req,res,next){try{
   const creator_id=utils.Validations.parseRequest(Schemas.Base.ParamsIdSchema,{id:req.params.user_id}).id;

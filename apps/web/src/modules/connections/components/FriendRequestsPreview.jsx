@@ -1,5 +1,6 @@
 // Loads a compact list of pending friend requests for the home page.
 import ProfileLink from '../../profiles/ProfileLink.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listConnections } from '../api/index.js';
@@ -51,7 +52,7 @@ export default function FriendRequestsPreview({ session }) {
             </div>
             <div className="wc-request-preview">
                 {loading ? (
-                    <p role="status">Loading requests…</p>
+                    <Skeleton count={2} />
                 ) : error ? (
                     <p role="alert">{error}</p>
                 ) : rows.length ? (

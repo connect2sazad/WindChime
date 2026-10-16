@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 import relativeTime from '../../shared/utils/relativeTime.js';
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../../modules/notifications/api/notifications.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
@@ -90,7 +91,7 @@ export default function NotificationsScreen() {
                     <Text style={styles.title}>Notifications</Text>
                     <Text style={styles.subtitle}>{unread ? `${unread} new updates from your corner.` : 'You’re up to date.'}</Text>
                     {error ? <Text style={styles.error}>{error}</Text> : null}
-                    {loading && !rows.length ? <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.centerText}>Checking what’s new…</Text></View> : null}
+                    {loading && !rows.length ? <Skeleton count={5} style={{ paddingTop: 12 }} /> : null}
                 </>}
                 renderItem={({ item }) => <Pressable onPress={() => openNotification(item)} style={[styles.row, !item.read_at && styles.unreadRow]}>
                     <Avatar user={item.actor} token={session.token} size={42} style={styles.avatar} />

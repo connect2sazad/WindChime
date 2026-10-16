@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import VideoPlayer from '../../../shared/components/VideoPlayer.jsx';
-import { getMediaBlob } from '../api/index.js';
+import { getMediaBlob, getMediaThumbnailBlob } from '../api/index.js';
 import PhotoViewer from './PhotoViewer.jsx';
 import { slideFromScroll } from '../utils/photos.js';
 function MediaItem({
@@ -18,6 +18,7 @@ function MediaItem({
     const container = useRef(null);
     const [visible, setVisible] = useState(false);
     const [url, setUrl] = useState('');
+    const [posterUrl, setPosterUrl] = useState('');
     const [error, setError] = useState('');
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -37,6 +38,16 @@ function MediaItem({
         if (!shouldLoad) return;
         const controller = new AbortController();
         let objectUrl = '';
+        let posterObjectUrl = '';
+        if (item.kind === 'video' && item.has_thumbnail) {
+            getMediaThumbnailBlob(token, postId, item.id, controller.signal)
+                .then((blob) => {
+                    if (controller.signal.aborted) return;
+                    posterObjectUrl = URL.createObjectURL(blob);
+                    setPosterUrl(posterObjectUrl);
+                })
+                .catch(() => {});
+        }
         async function load() {
             try {
                 const blob = await getMediaBlob(token, postId, item.id, controller.signal);
@@ -51,6 +62,7 @@ function MediaItem({
         return () => {
             controller.abort();
             if (objectUrl) URL.revokeObjectURL(objectUrl);
+            if (posterObjectUrl) URL.revokeObjectURL(posterObjectUrl);
         };
     }, [shouldLoad, token, postId, item.id]);
     return (
@@ -62,10 +74,11 @@ function MediaItem({
                     </p>
                 ) : !url ? (
                     <div className="wc-media-loading" role="status">
-                        {visible || eager ? 'Loading ' + item.kind + '…' : 'Photo ' + number}
+                        {posterUrl ? <img className="wc-media-poster" src={posterUrl} alt="" aria-hidden="true" /> : null}
+                        <span>{visible || eager ? 'Loading ' + item.kind + '…' : 'Photo ' + number}</span>
                     </div>
                 ) : item.kind === 'video' ? (
-                    <VideoPlayer src={url} reel={reel} label={reel ? 'Reel' : 'Post video'} />
+                    <VideoPlayer src={url} poster={posterUrl} reel={reel} label={reel ? 'Reel' : 'Post video'} />
                 ) : (
                     <button
                         type="button"

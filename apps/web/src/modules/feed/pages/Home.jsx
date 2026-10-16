@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { getPersonalizedFeed } from '../../posts/api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 // Loads the network or discovery feed, then handles paging and refresh actions.
 export default function Home({ session, logoutError }) {
@@ -210,11 +211,7 @@ export default function Home({ session, logoutError }) {
                     />
                 ))}
 
-                {feedLoading && (
-                    <p className="wc-notice" role="status">
-                        Loading conversations…
-                    </p>
-                )}
+                {feedLoading && <Skeleton variant="feed" count={2} />}
 
                 {feedError && (
                     <div className="wc-notice" role="alert">

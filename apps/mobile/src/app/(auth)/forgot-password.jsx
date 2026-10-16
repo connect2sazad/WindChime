@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Link, Redirect, router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../shared/session/useSession.js';
 import { requestPasswordReset, resetPassword } from '../../modules/identity/api/auth.js';
@@ -17,8 +17,6 @@ export default function ForgotPasswordScreen() {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
-    if (session) return <Redirect href="/(main)" />;
-
     async function sendCode() {
         if (!email.trim()) { setError('Enter the email address on your WindChime account.'); return; }
         setBusy(true); setError(''); setMessage('');
@@ -32,7 +30,7 @@ export default function ForgotPasswordScreen() {
         if (password.length < 8) { setError('Choose a password with at least 8 characters.'); return; }
         if (password !== confirmPassword) { setError('The passwords do not match.'); return; }
         setBusy(true); setError(''); setMessage('');
-        try { await resetPassword(email, code, password, confirmPassword); setMessage('Your password has been changed. Sign in with the new password.'); setTimeout(() => router.replace('/login'), 900); }
+        try { await resetPassword(email, code, password, confirmPassword); setMessage('Your password has been changed.'); setTimeout(() => router.replace(session ? '/(main)/profile' : '/login'), 900); }
         catch (cause) { setError(cause.message || 'Could not reset the password.'); }
         finally { setBusy(false); }
     }
@@ -40,8 +38,8 @@ export default function ForgotPasswordScreen() {
     const input = { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 13, paddingHorizontal: 13, color: colors.ink, backgroundColor: '#fbfcfa', fontSize: 14, marginTop: 7 };
     const label = { color: colors.ink, fontSize: 12, fontWeight: '700', marginTop: 17 };
     return <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 22 }} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 22 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
                 <View style={{ width: '100%', maxWidth: 460, alignSelf: 'center', padding: 22, borderRadius: 25, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border }}>
                     <Pressable onPress={() => router.back()}><Text style={{ color: colors.green, fontWeight: '700' }}>‹  Back to sign in</Text></Pressable>
                     <Text style={{ color: colors.ink, fontSize: 26, fontWeight: '800', marginTop: 26 }}>Reset your password</Text>

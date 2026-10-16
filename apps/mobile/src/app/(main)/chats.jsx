@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 import relativeTime from '../../shared/utils/relativeTime.js';
 import { getConversations } from '../../modules/messages/api/messages.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
@@ -68,7 +69,7 @@ export default function ChatsScreen() {
                     <Text style={styles.subtitle}>Private conversations with your friends.</Text>
                     <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="Search a name or username" placeholderTextColor={colors.muted} autoCapitalize="none" />
                     {error ? <Pressable onPress={() => load()} style={styles.errorBox}><Text style={styles.errorText}>{error}</Text><Text style={styles.retry}>Tap to try again</Text></Pressable> : null}
-                    {loading && !rows.length ? <View style={styles.center}><ActivityIndicator color={colors.green} /><Text style={styles.centerText}>Loading conversations…</Text></View> : null}
+                    {loading && !rows.length ? <Skeleton count={4} style={{ paddingTop: 10 }} /> : null}
                 </>}
                 renderItem={({ item }) => <Pressable style={styles.row} onPress={() => router.push({ pathname: '/conversations/[id]', params: { id: String(item.id), peer_id: String(item.peer_id) } })}>
                     <Avatar user={item.peer} token={session.token} size={48} style={styles.avatar} />

@@ -1,4 +1,4 @@
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Redirect, Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '../../shared/session/useSession.js';
 import colors from '../../styles/colors.js';
 import { getUnreadChatCount } from '../../modules/messages/api/messages.js';
+import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 
 export default function MainLayout() {
     const insets = useSafeAreaInsets();
@@ -23,7 +25,7 @@ export default function MainLayout() {
         poll();
         return () => { active = false; clearTimeout(timer); };
     }, [session?.token]);
-    if (!ready) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper }}><ActivityIndicator color={colors.green} /></View>;
+    if (!ready) return <View style={{ flex: 1, justifyContent: 'center', padding: 22, backgroundColor: colors.paper }}><Skeleton variant="profile" /></View>;
     if (!session) return <Redirect href="/login" />;
     return (
         <Tabs screenOptions={{
@@ -39,10 +41,12 @@ export default function MainLayout() {
             <Tabs.Screen name="reels" options={{ title: 'Reels', tabBarAccessibilityLabel: 'Reels', tabBarIcon: ({ color }) => <SymbolView name={{ ios: 'play.rectangle.fill', android: 'play_circle', web: 'play_circle' }} tintColor={color} size={23} /> }} />
             <Tabs.Screen name="create" options={{ title: 'Create', tabBarAccessibilityLabel: 'Create', tabBarIcon: ({ color }) => <SymbolView name={{ ios: 'plus.square', android: 'add_box', web: 'add_box' }} tintColor={color} size={23} /> }} />
             <Tabs.Screen name="chats" options={{ title: 'Messages', tabBarAccessibilityLabel: unreadChats ? `Messages, ${unreadChats} unread chats` : 'Messages', tabBarBadge: unreadChats ? (unreadChats > 99 ? '99+' : unreadChats) : undefined, tabBarBadgeStyle: { backgroundColor: colors.danger, color: colors.white, fontSize: 10 }, tabBarIcon: ({ color }) => <SymbolView name={{ ios: 'bubble.left.and.bubble.right.fill', android: 'chat', web: 'chat' }} tintColor={color} size={23} /> }} />
-            <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarAccessibilityLabel: 'Profile', tabBarIcon: ({ color }) => <SymbolView name={{ ios: 'person.crop.circle.fill', android: 'account_circle', web: 'account_circle' }} tintColor={color} size={23} /> }} />
+            <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarAccessibilityLabel: 'Profile', tabBarIcon: () => <Avatar user={session.user} token={session.token} size={27} style={{ borderRadius: 14, borderWidth: 1.5, borderColor: colors.green }} /> }} />
             <Tabs.Screen name="notifications" options={{ href: null }} />
             <Tabs.Screen name="profile-edit" options={{ href: null }} />
             <Tabs.Screen name="saved" options={{ href: null }} />
+            <Tabs.Screen name="blocked" options={{ href: null }} />
+            <Tabs.Screen name="post-insights" options={{ href: null }} />
         </Tabs>
     );
 }

@@ -6,6 +6,8 @@ import { listConnections } from '../../connections/api/index.js';
 import { getDisplayUser } from '../../profiles/api/index.js';
 import { startConversation, sendMessage } from '../../messages/api/index.js';
 import Avatar from '../../profiles/Avatar.js';
+import { recordPostInsight } from '../api/index.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 // Searches for a person, then shares the selected post with that recipient.
 export default function SharePostDialog({ post, token, onClose }) {
@@ -89,6 +91,7 @@ export default function SharePostDialog({ post, token, onClose }) {
             await sendMessage(token, conversation.id, '', retry.current.get(user.id), {
                 postId: post.id,
             });
+            recordPostInsight(token, post.id, 'message_share').catch(() => {});
             setSent((previous) => ({ ...previous, [user.id]: conversation.id }));
         } catch (e) {
             setError(e.message);
@@ -156,7 +159,7 @@ export default function SharePostDialog({ post, token, onClose }) {
                         )}
                     </div>
                 ))}
-                {loading && <p role="status">Loading friends…</p>}
+                {loading && <Skeleton count={3} />}
                 {!loading && !friends.length && !error && (
                     <p>
                         {search

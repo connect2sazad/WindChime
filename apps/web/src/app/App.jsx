@@ -1,13 +1,14 @@
 import useSessionController from '../modules/identity/session.js';
 import { Login } from '../modules/identity/index.js';
 import SignedInRoutes from './routes.jsx';
+import Skeleton from '../shared/components/Skeleton.jsx';
 export default function App() {
     // Wait for saved-session validation before choosing the signed-in or sign-in screen.
     const auth = useSessionController();
     if (auth.restoring)
         return (
             <main className="session-screen">
-                <p role="status">Finding your corner…</p>
+                <Skeleton variant="profile" className="wc-skeleton-page" count={1} />
             </main>
         );
     if (auth.restoreError)

@@ -4,7 +4,8 @@ import colors from '../../../styles/colors.js';
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.paper },
     keyboard: { flex: 1 },
-    content: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 18 },
+    scroll: { flexGrow: 1 },
+    content: { flexGrow: 1, width: '100%', maxWidth: 520, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 18 },
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper },
     brandRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 16 },
     brand: { color: colors.ink, fontSize: 23, fontWeight: '800', letterSpacing: -1.2 },

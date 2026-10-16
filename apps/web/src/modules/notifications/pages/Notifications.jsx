@@ -6,6 +6,7 @@ import { getDisplayUser } from '../../profiles/api/index.js';
 import Avatar from '../../profiles/Avatar.js';
 import RelativeTime from '../../../shared/components/RelativeTime.jsx';
 import Icon from '../../../shared/components/Icon.jsx';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 // Loads notification pages and handles opening or marking notifications as read.
 export default function Notifications({ session }) {
     const [rows, setRows] = useState([]);
@@ -143,7 +144,7 @@ export default function Notifications({ session }) {
                 </p>
             )}
             {loading ? (
-                <p role="status">Gathering your updates…</p>
+                <Skeleton count={5} />
             ) : rows.length ? (
                 <ul className="wc-notification-list">
                     {rows.map((row) => (

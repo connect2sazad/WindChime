@@ -16,6 +16,7 @@ import Avatar from '../Avatar.js';
 import ConnectionActions from '../../connections/Actions.js';
 import useAvailability from '../../identity/availability.js';
 import { PostCard } from '../../posts/PostCard.js';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 const TABS = [
     ['all', 'All posts'],
@@ -307,9 +308,7 @@ export default function Profile({ session, onUpdated }) {
                     ← Back to feed
                 </Link>
                 {loading ? (
-                    <div className="wc-profile-loading" role="status">
-                        Loading profile…
-                    </div>
+                    <Skeleton variant="profile" count={1} />
                 ) : profile ? (
                     <>
                         <section className="wc-profile-card">
@@ -519,9 +518,7 @@ export default function Profile({ session, onUpdated }) {
                                 </nav>
                             )}
                             {listLoading ? (
-                                <div className="wc-profile-loading" role="status">
-                                    Loading {label.toLowerCase()}…
-                                </div>
+                                <Skeleton count={4} />
                             ) : listError ? (
                                 <div className="wc-profile-empty" role="alert">
                                     <h3>Couldn’t load this section</h3>

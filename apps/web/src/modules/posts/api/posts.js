@@ -1,4 +1,5 @@
 import { apiRequest, SOCIAL_API } from '../../../shared/api/request.js';
+const recentInsightViews = new Map();
 // Social-service requests for posts, feeds, reshares, and protected media.
 export async function updatePost(token, id, content) {
     const result = await apiRequest(SOCIAL_API, `/posts/${id}`, {
@@ -21,13 +22,14 @@ export async function getPosts(token, signal, page = 1) {
     if (!Array.isArray(body.data)) throw new Error('Unexpected posts response');
     return body;
 }
-export async function createPost(token, content, { kind = 'post', files = [] } = {}) {
+export async function createPost(token, content, { kind = 'post', files = [], thumbnail = null } = {}) {
     let payload = { content, kind };
     if (files.length) {
         payload = new FormData();
         payload.append('content', content);
         payload.append('kind', kind);
         for (const file of files) payload.append('media', file);
+        if (thumbnail) payload.append('thumbnail', thumbnail);
     }
     const body = await apiRequest(SOCIAL_API, '/posts', {
         token,
@@ -60,6 +62,15 @@ export async function getMediaBlob(token, postId, mediaId, signal) {
     });
 }
 
+export async function getMediaThumbnailBlob(token, postId, mediaId, signal) {
+    return apiRequest(SOCIAL_API, `/posts/${postId}/media/${mediaId}/thumbnail`, {
+        token,
+        signal,
+        responseType: 'blob',
+        timeoutMs: 30000,
+    });
+}
+
 export async function getPersonalizedFeed(token, signal, cursorOrPage = null, mode = 'network') {
     const paging = Number.isInteger(cursorOrPage)
         ? `page=${cursorOrPage}`
@@ -81,4 +92,26 @@ export async function getPost(token, id, signal) {
         throw error;
     }
     return result.data;
+}
+
+export function recordPostInsight(token, id, eventType, source = 'feed') {
+    const eventKey = eventType === 'view'
+        ? `view_${Math.floor(Date.now() / (30 * 60 * 1000))}`
+        : globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    return apiRequest(SOCIAL_API, `/posts/${id}/insights/events`, {
+        token,
+        method: 'POST',
+        body: { event_type: eventType, source, event_key: eventKey },
+    });
+}
+
+export function recordPostImpressionOnce(token, id) {
+    const key = `${token}:${id}`;
+    const now = Date.now();
+    if (recentInsightViews.get(key) && now - recentInsightViews.get(key) < 30 * 60 * 1000) return Promise.resolve(null);
+    recentInsightViews.set(key, now);
+    return recordPostInsight(token, id, 'view').catch((error) => {
+        recentInsightViews.delete(key);
+        throw error;
+    });
 }

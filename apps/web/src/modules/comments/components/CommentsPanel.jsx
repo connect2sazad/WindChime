@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getComments, getCommentSummary, createComment, deleteComment } from '../api/index.js';
 import CommentItem from './CommentItem.jsx';
+import Skeleton from '../../../shared/components/Skeleton.jsx';
 
 // Loads a post’s comments, supports replies, and sends create or delete actions.
 export default function CommentsPanel({
@@ -223,7 +224,7 @@ export default function CommentsPanel({
                     <div>
                         <h2 id={`comments-title-${post.id}`}>Comments</h2>
                         <span>
-                            {loading ? 'Loading…' : `${summary.total} total · includes replies`}
+                            {loading ? <Skeleton variant="inline" /> : `${summary.total} total · includes replies`}
                         </span>
                     </div>
                     <button type="button" aria-label="Close comments" onClick={onClose}>
@@ -239,11 +240,7 @@ export default function CommentsPanel({
                         </div>
                     )}
 
-                    {loading && (
-                        <p className="wc-ig-status" role="status">
-                            Loading comments…
-                        </p>
-                    )}
+                    {loading && <Skeleton count={4} />}
                     {error && (
                         <p className="wc-ig-status" role="alert">
                             {error}
@@ -276,7 +273,7 @@ export default function CommentsPanel({
                             disabled={busy}
                             onClick={more}
                         >
-                            {busy ? 'Loading…' : 'View more comments'}
+                            {busy ? <Skeleton variant="inline" /> : 'View more comments'}
                         </button>
                     )}
                 </div>

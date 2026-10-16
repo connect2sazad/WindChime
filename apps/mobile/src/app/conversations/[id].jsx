@@ -10,6 +10,7 @@ import { MESSAGES_API } from '../../shared/config/services.js';
 import MessageVideo from '../../modules/messages/components/MessageVideo.jsx';
 import ReactionIcon from '../../modules/social/components/ReactionIcon.jsx';
 import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 import relativeTime from '../../shared/utils/relativeTime.js';
 import { sendReport } from '../../modules/safety/api/safety.js';
 import { useSession } from '../../shared/session/useSession.js';
@@ -216,7 +217,7 @@ export default function ConversationScreen() {
             <KeyboardAvoidingView style={styles.body} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
                 <ScrollView ref={scrollRef} contentContainerStyle={styles.messageList} keyboardShouldPersistTaps="handled">
                     <Text style={styles.privacyNote}>A private conversation between friends.</Text>
-                    {loading ? <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.loadingText}>Opening your conversation…</Text></View> : null}
+                    {loading ? <Skeleton count={5} style={{ padding: 12 }} /> : null}
                     {!loading && !messages.length && !error ? <View style={styles.empty}><Text style={styles.emptyMark}>✳</Text><Text style={styles.emptyTitle}>Say a little hello.</Text><Text style={styles.emptyCopy}>Your conversation starts with one message.</Text></View> : null}
                     {messages.map((item) => <MessageBubble key={item.id} item={item} mine={item.sender_id === session.user.id} token={token} conversationId={conversationId} onDoubleTap={() => handleMessageTap(item)} onLongPress={() => showMessageActions(item)} onReply={() => setReplyingTo(item)} showReactions={reactionMenu === item.id} onReact={(type) => reactToMessage(item, type)} />)}
                     {peerTyping ? <View style={{ alignSelf: 'flex-start', marginLeft: 4, marginTop: 2, marginBottom: 8, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 15, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border }}><Text style={{ color: colors.green, fontSize: 11, fontWeight: '700' }}>Typing…</Text></View> : null}

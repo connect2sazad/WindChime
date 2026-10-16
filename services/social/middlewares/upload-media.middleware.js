@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import errors from '../errors/registry.js';
 export const UPLOAD_DIR=fileURLToPath(new URL('../uploads/posts/',import.meta.url));
 const TYPES={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4','video/webm':'webm'};
-export async function cleanupFiles(files=[]){await Promise.allSettled(files.map(file=>fs.unlink(file.path)));}
+export async function cleanupFiles(files=[]){const list=Array.isArray(files)?files:Object.values(files||{}).flat();await Promise.allSettled(list.filter(file=>file?.path).map(file=>fs.unlink(file.path)));}
 export async function optimizePhoto(file){
  const originalPath=file.path;const filename=randomUUID()+'.webp';const optimizedPath=path.join(UPLOAD_DIR,filename);
  try{
@@ -32,9 +32,9 @@ export function sniffMime(buffer){
 }
 const uploader=multer({
  storage:multer.diskStorage({destination(req,file,cb){mkdirSync(UPLOAD_DIR,{recursive:true});cb(null,UPLOAD_DIR);},filename(req,file,cb){cb(null,randomUUID()+'.'+TYPES[file.mimetype]);}}),
- limits:{fileSize:50*1024*1024,files:12,fields:4,fieldSize:16*1024},
+ limits:{fileSize:50*1024*1024,files:13,fields:4,fieldSize:16*1024},
  fileFilter(req,file,cb){if(!TYPES[file.mimetype])return cb(new errors.ValidationException('Use JPG, PNG, WebP, MP4 or WebM'));cb(null,true);},
-}).array('media',12);
+}).fields([{name:'media',maxCount:12},{name:'thumbnail',maxCount:1}]);
 export async function validateFiles(files=[]){
  if(files.length>12)throw new errors.ValidationException('Choose up to 12 photos');
  let videos=0;
@@ -50,6 +50,21 @@ export async function validateFiles(files=[]){
  if(videos&&(videos!==1||files.length!==1))throw new errors.ValidationException('Choose up to 12 photos or one video, not both');
 }
 export default function uploadMedia(req,res,next){uploader(req,res,async error=>{
- try{if(error)throw error;await validateFiles(req.files||[]);next();}
- catch(e){await cleanupFiles(req.files||[]);if(e.code==='LIMIT_FILE_SIZE'){const tooLarge=new Error('Video exceeds the 50 MB limit');tooLarge.status=413;return next(tooLarge);}next(e instanceof multer.MulterError?new errors.ValidationException('Too many files or invalid upload fields'):e);}
+ try{
+  if(error)throw error;
+  const uploaded=req.files||{};req.files=uploaded.media||[];req.thumbnailFile=uploaded.thumbnail?.[0]||null;
+  await validateFiles(req.files);
+  if(req.thumbnailFile){
+   if(req.files.length!==1||req.files[0].mediaKind!=='video')throw new errors.ValidationException('A thumbnail can only accompany one video');
+   const handle=await fs.open(req.thumbnailFile.path,'r');const buffer=Buffer.alloc(16);
+   try{await handle.read(buffer,0,16,0);}finally{await handle.close();}
+   const mime=sniffMime(buffer);if(!mime?.startsWith('image/')||mime!==req.thumbnailFile.mimetype)throw new errors.ValidationException('Video thumbnail must be a valid image');
+   req.thumbnailFile.mediaKind='image';
+   if(req.thumbnailFile.size>10*1024*1024)throw new errors.ValidationException('Video thumbnail is too large');
+   await optimizePhoto(req.thumbnailFile);
+  }
+  next();
+ }
+ catch(e){const uploaded=req.files;await cleanupFiles([...cleanupFilesList(uploaded),req.thumbnailFile].filter(Boolean));if(e.code==='LIMIT_FILE_SIZE'){const tooLarge=new Error('Video exceeds the 50 MB limit');tooLarge.status=413;return next(tooLarge);}next(e instanceof multer.MulterError?new errors.ValidationException('Too many files or invalid upload fields'):e);}
 });}
+function cleanupFilesList(files){return Array.isArray(files)?files:Object.values(files||{}).flat();}

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Avatar from '../../shared/components/Avatar.jsx';
+import Skeleton from '../../shared/components/Skeleton.jsx';
 import { getConnections, getRelationship, getUsers, followUser, respondFriendRequest, sendFriendRequest, unfriend, unfollowUser } from '../../modules/social/api/connections.js';
 import { getDisplayUser } from '../../modules/social/api/feed.js';
 import { useSession } from '../../shared/session/useSession.js';
@@ -117,7 +118,7 @@ export default function ConnectionsScreen() {
                     <View style={styles.tabs}>{tabs.map((tab) => <Pressable key={tab.key} onPress={() => setView(tab.key)} style={[styles.tab, view === tab.key && styles.tabActive]}><Text style={[styles.tabText, view === tab.key && styles.tabTextActive]}>{tab.label}</Text></Pressable>)}</View>
                     {view === 'find' ? <TextInput style={styles.search} value={query} onChangeText={setQuery} placeholder="Search name or username" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} /> : null}
                     {error ? <Text style={styles.error}>{error}</Text> : null}
-                    {loading ? <View style={styles.loading}><ActivityIndicator color={colors.green} /><Text style={styles.muted}>Finding your people…</Text></View> : null}
+                    {loading ? <Skeleton count={3} style={{ paddingTop: 10 }} /> : null}
                 </>}
                 renderItem={({ item }) => renderRow(item)}
                 ListEmptyComponent={!loading && !error ? <View style={styles.empty}><Text style={styles.emptyMark}>✳</Text><Text style={styles.emptyTitle}>{view === 'incoming' ? 'No requests right now' : view === 'friends' ? 'Your friend list is growing' : 'No people found'}</Text><Text style={styles.muted}>{view === 'find' ? 'Try a different name or username.' : 'Check back when someone reaches out.'}</Text></View> : null}

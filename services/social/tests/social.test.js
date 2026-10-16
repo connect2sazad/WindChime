@@ -19,7 +19,7 @@ before(async()=>{
     await new Promise(resolve=>server.once('listening',resolve));
     base='http://127.0.0.1:'+server.address().port;
 });
-beforeEach(()=>{transaction();mock.method(Block,'findAll',async()=>[]);mock.method(Block,'findOne',async()=>null);});
+beforeEach(()=>{transaction();mock.method(Block,'findAll',async()=>[]);mock.method(Block,'findOne',async()=>null);mock.method(Models.PostInsightEvent,'create',async values=>record(values));});
 afterEach(()=>mock.restoreAll());
 after(async()=>{await new Promise(resolve=>server.close(resolve));await sequelize.close();});
 function identity(id=1,status=200,role='user'){
@@ -99,7 +99,28 @@ test('other users can read a post',async()=>{identity(2);mock.method(Models.Post
 test('visible post view endpoint increments and returns the persisted count',async()=>{
     identity(2);transaction();const post=record({views_count:4});post.increment=async(field,options)=>{assert.equal(field,'views_count');assert.equal(options.by,1);post.views_count+=1;};post.reload=async()=>post;
     mock.method(Models.Post,'findOne',async()=>post);
-    const result=await request('/posts/3/view','PUT',{});assert.equal(result.status,200);assert.equal(result.body.data.views,5);
+    mock.method(Models.PostInsightEvent,'findOrCreate',async()=>[record(),true]);
+    const result=await request('/posts/3/insights/events','POST',{event_type:'view',source:'feed',event_key:'view_12345678'});assert.equal(result.status,200);assert.equal(result.body.data.recorded,true);assert.equal(post.views_count,5);
+});
+test('post insight events are idempotent and do not count creator views',async()=>{
+    identity(2);transaction();const post=record({views_count:4});post.increment=()=>assert.fail('duplicate event incremented view count');
+    mock.method(Models.Post,'findOne',async()=>post);mock.method(Models.PostInsightEvent,'findOrCreate',async()=>[record(),false]);
+    const result=await request('/posts/3/insights/events','POST',{event_type:'view',source:'reel',event_key:'view_12345678'});assert.equal(result.status,200);assert.equal(result.body.data.recorded,false);
+});
+test('post insights are private to the post creator',async()=>{
+    identity(2);mock.method(Models.Post,'findOne',async()=>record({creator_id:1}));
+    assert.equal((await request('/posts/3/insights')).status,404);
+});
+test('post insights aggregate recorded actions for the owner',async()=>{
+    identity();mock.method(Models.Post,'findOne',async()=>record({views_count:11}));
+    mock.method(Models.PostInsightEvent,'findAll',async()=>[
+        {event_type:'view',source:'reel',total:'3'}, {event_type:'profile_open',source:'feed',total:'2'},
+        {event_type:'message_share',source:'reel',total:'1'}, {event_type:'save',source:'unknown',total:'4'},
+    ]);
+    mock.method(Models.PostInsightEvent,'count',async options=>options.where.event_type==='view'?2:5);
+    mock.method(Models.PostReaction,'findAll',async()=>[{type:'love',total:'2'}]);
+    mock.method(Models.SavedPost,'count',async()=>3);mock.method(Models.PostRepost,'count',async()=>1);mock.method(Models.Comment,'count',async()=>6);
+    const result=await request('/posts/3/insights');assert.equal(result.status,200);assert.equal(result.body.data.views.total,11);assert.equal(result.body.data.views.tracked_total,3);assert.equal(result.body.data.views.unique_viewers,2);assert.equal(result.body.data.profile_opens,2);assert.equal(result.body.data.message_shares,1);assert.equal(result.body.data.saves.total,4);assert.equal(result.body.data.saves.current,3);assert.equal(result.body.data.comments.current,6);assert.equal(result.body.data.audience_demographics.available,false);
 });
 test('post view count endpoint respects visibility and hides blocked creators',async()=>{
     identity(2);mock.method(Block,'findAll',async()=>[{blocker_id:1,blocked_id:2}]);mock.method(Models.Post,'findOne',async()=>record({creator_id:1}));
@@ -374,13 +395,33 @@ test('media-only post creates ordered attachments and retains authenticated owne
  identity();let values;let generated=[];
  mock.method(Models.Post,'create',async data=>{values=data;return {...record({content:'',kind:'post',media:[{id:9,kind:'image',mime_type:'image/png',size:68,sort_order:0}]}),reload:async()=>{}};});
  mock.method(Models.PostMedia,'bulkCreate',async rows=>{generated=rows.map(row=>row.filename);assert.equal(rows[0].kind,'image');assert.equal(rows[0].post_id,3);});
- const fixture=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=','base64');
+ const {default:sharp}=await import('sharp');const fixture=await sharp({create:{width:4,height:4,channels:3,background:'#fff'}}).png().toBuffer();
  const form=new FormData();form.append('content','');form.append('kind','post');form.append('media',new Blob([fixture],{type:'image/png'}),'test.png');
  const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});
  const body=await response.json();assert.equal(response.status,201);assert.equal(body.data.media[0].kind,'image');assert.equal(values.creator_id,1);
  const {cleanupFiles,UPLOAD_DIR}=await import('../middlewares/upload-media.middleware.js');
  const path=await import('node:path');
  for(const filename of generated)await cleanupFiles([{path:path.join(UPLOAD_DIR,filename)}]);
+});
+test('video upload stores an optimized poster image beside the video',async()=>{
+ identity();let attachments=[];
+ const post=record({content:'',kind:'reel'});const originalJSON=post.toJSON;post.toJSON=()=>({...originalJSON(),media:attachments.map((item,index)=>({id:index+1,...item}))});
+ mock.method(Models.Post,'create',async()=>post);
+ mock.method(Models.PostMedia,'bulkCreate',async rows=>{attachments=rows;assert.equal(rows.length,1);assert.equal(rows[0].kind,'video');assert.match(rows[0].thumbnail_filename,/^[a-f0-9-]+\.webp$/);});
+ const {default:sharp}=await import('sharp');const poster=await sharp({create:{width:8,height:8,channels:3,background:'#879'}}).png().toBuffer();
+ const video=Buffer.alloc(32);video.write('ftyp',4,'ascii');video.write('isom',8,'ascii');
+ const form=new FormData();form.append('content','');form.append('kind','reel');form.append('media',new Blob([video],{type:'video/mp4'}),'clip.mp4');form.append('thumbnail',new Blob([poster],{type:'image/png'}),'poster.png');
+ const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});const body=await response.json();
+ assert.equal(response.status,201);assert.equal(body.data.media[0].has_thumbnail,true);
+ const {cleanupFiles,UPLOAD_DIR}=await import('../middlewares/upload-media.middleware.js');const path=await import('node:path');
+ await cleanupFiles([attachments[0].filename,attachments[0].thumbnail_filename].map(filename=>({path:path.join(UPLOAD_DIR,filename)})));
+});
+test('video upload without a poster is rejected instead of storing a NULL thumbnail filename',async()=>{
+ identity();mock.method(Models.Post,'create',()=>assert.fail('Video without a poster reached database'));
+ const video=Buffer.alloc(32);video.write('ftyp',4,'ascii');video.write('isom',8,'ascii');
+ const form=new FormData();form.append('content','');form.append('kind','reel');form.append('media',new Blob([video],{type:'video/mp4'}),'clip.mp4');
+ const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});
+ assert.equal(response.status,422);assert.match((await response.json()).message,/preview/);
 });
 test('reel requires exactly one video',async()=>{
  identity();assert.equal((await request('/posts','POST',{content:'Text only',kind:'reel'})).status,422);
@@ -406,9 +447,22 @@ test('media sets private headers and treats cancelled transfers as normal',async
  await controller.media({params:{post_id:3,media_id:4}},res,()=>assert.fail('Aborted playback became an error'));
  assert.equal(headers['Content-Type'],'video/mp4');assert.equal(headers['Cache-Control'],'private, no-store');assert.equal(headers['Content-Disposition'],'inline');assert.equal(headers['X-Content-Type-Options'],'nosniff');
 });
+test('post serialization exposes poster availability but never the stored filename',async()=>{
+ const {default:PostController}=await import('../controllers/post.controller.js');const controller=new PostController();
+ const row=record({media:[{id:4,kind:'video',mime_type:'video/mp4',size:100,sort_order:0,thumbnail_filename:'private-name.webp'}]});
+ const serialized=controller.serialize(row);
+ assert.equal(serialized.media[0].has_thumbnail,true);assert.equal(Object.hasOwn(serialized.media[0],'thumbnail_filename'),false);
+});
+test('video thumbnail endpoint checks post visibility and serves cached image files',async()=>{
+ const {default:PostController}=await import('../controllers/post.controller.js');const controller=new PostController();
+ mock.method(Models.Post,'findByPk',async()=>record());mock.method(Models.PostMedia,'findOne',async options=>{assert.deepEqual(options.where,{id:4,post_id:3});return {thumbnail_filename:'aabb-ccdd.webp'};});
+ const headers={};const res={set:value=>Object.assign(headers,value),vary:value=>assert.equal(value,'Authorization'),sendFile:(file,options,callback)=>{assert.ok(file.endsWith('aabb-ccdd.webp'));assert.deepEqual(options,{dotfiles:'deny',cacheControl:false,lastModified:false});callback();}};
+ await controller.mediaThumbnail({params:{post_id:3,media_id:4}},res,()=>assert.fail('Valid thumbnail became an error'));
+ assert.equal(headers['Content-Type'],'image/webp');assert.match(headers['Cache-Control'],/private, max-age=86400/);assert.equal(headers['X-Content-Type-Options'],'nosniff');
+});
 
 test('post upload accepts twelve ordered photos and rejects a thirteenth',async()=>{
- identity();const fixture=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=','base64');let files=[];
+ identity();const {default:sharp}=await import('sharp');const fixture=await sharp({create:{width:4,height:4,channels:3,background:'#fff'}}).png().toBuffer();let files=[];
  mock.method(Models.Post,'create',async()=>({...record({content:'',kind:'post',media:[]}),reload:async()=>{}}));mock.method(Models.PostMedia,'bulkCreate',async rows=>{assert.equal(rows.length,12);assert.deepEqual(rows.map(row=>row.sort_order),Array.from({length:12},(_,index)=>index));files=rows.map(row=>row.filename);});
  const {cleanupFiles,UPLOAD_DIR}=await import('../middlewares/upload-media.middleware.js');const path=await import('node:path');
  try{const form=new FormData();for(let index=0;index<12;index++)form.append('media',new Blob([fixture],{type:'image/png'}),'photo-'+index+'.png');const response=await nativeFetch(base+'/api/v1/posts',{method:'POST',headers:{Authorization:'Bearer test-token'},body:form});assert.equal(response.status,201);}finally{await cleanupFiles(files.map(filename=>({path:path.join(UPLOAD_DIR,filename)})));}

@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getReactionSummary, setReaction, removeReaction } from '../../reactions/api/index.js';
 import { getRepostSummary, addRepost, undoRepost } from '../api/index.js';
 import { getCommentSummary } from '../../comments/api/index.js';
+import { recordPostImpressionOnce, recordPostInsight } from '../api/index.js';
 import CommentsPanel from '../../comments/index.js';
 
 // Displays one post and coordinates its reactions, comments, reposts, and edit actions.
@@ -40,6 +41,7 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
     const [repostBusy, setRepostBusy] = useState(false);
     const [repostError, setRepostError] = useState('');
     const repostPending = useRef(false);
+    const articleRef = useRef(null);
 
     const [commentsLoading, setCommentsLoading] = useState(false);
     const [commentsError, setCommentsError] = useState('');
@@ -251,6 +253,19 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
 
     useEffect(() => () => clearTimeout(holdTimer.current), []);
 
+    useEffect(() => {
+        const element = articleRef.current;
+        if (!element || typeof IntersectionObserver === 'undefined') return undefined;
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.6)) {
+                recordPostImpressionOnce(token, post.id).catch(() => {});
+                observer.disconnect();
+            }
+        }, { threshold: [0.6] });
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [post.id, token]);
+
     async function toggleRepost() {
         if (repostLoading || repostPending.current || repostError) return;
 
@@ -276,11 +291,11 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
     }
 
     return (
-        <article className="wc-post">
+        <article className="wc-post" ref={articleRef}>
             <header className="wc-post-header">
                 <Avatar name={post.name} tone={post.tone} id={post.creator_id} token={token} />
                 <div>
-                    <ProfileLink className="wc-author-link" username={post.username}>
+                    <ProfileLink className="wc-author-link" username={post.username} onClick={() => recordPostInsight(token, post.id, 'profile_open').catch(() => {})}>
                         <strong>{post.name}</strong>
                     </ProfileLink>
                     <p>
@@ -361,7 +376,6 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                         </span>
                         <span>
                             {summary.total}
-                            {/* {reactionLoading ? 'Loading…' : reactionBusy ? 'Saving…' : selectedReaction?.label || 'Like'} */}
                         </span>
                     </button>
                     {pickerOpen && (
@@ -427,6 +441,18 @@ export default function PostCard({ post, currentUser, token, onUpdated, onDelete
                     onClick={() => setSharing(true)}
                 >
                     <Icon name="send" size={20} />
+                </button>
+
+                <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-label="View comments"
+                    aria-haspopup="dialog"
+                    title={commentsError || 'View comments'}
+                    onClick={() => setExpanded((value) => !value)}
+                >
+                    <Icon name="view" size={20} />{' '}
+                    {post.views_count}
                 </button>
 
                 <span className="wc-post-signoff">a moment shared</span>

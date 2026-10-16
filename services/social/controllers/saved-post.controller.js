@@ -3,6 +3,7 @@ import Models from '../models/registry.js';
 import errors from '../errors/registry.js';
 import { visibleRecord } from '../services/safety.service.js';
 import { Op } from 'sequelize';
+import { recordPostInsightEvent } from '../services/post-insights.service.js';
 
 class SavedPostController extends BaseController {
     constructor() { super(Models.SavedPost, { idParam: 'post_id' }); }
@@ -14,9 +15,12 @@ class SavedPostController extends BaseController {
             const post = await Models.Post.findOne({ where: { id: post_id, status: true } });
             if (!post) throw new errors.NotFoundException('Post not found');
             visibleRecord(req, post);
-            const [saved] = await this.model.findOrCreate({
-                where: { creator_id: req.auth.id, post_id },
-                defaults: { creator_id: req.auth.id, post_id },
+            let saved, created;
+            await this.model.sequelize.transaction(async (transaction) => {
+                [saved, created] = await this.model.findOrCreate({
+                    where: { creator_id: req.auth.id, post_id }, defaults: { creator_id: req.auth.id, post_id }, transaction,
+                });
+                if (created) await recordPostInsightEvent({ post_id, actor_id: req.auth.id, event_type: 'save', transaction });
             });
             return res.status(200).json({ success: true, message: 'Moment saved', data: { saved: true, post_id, saved_at: saved.created_at } });
         } catch (error) { return next(error); }
@@ -26,7 +30,10 @@ class SavedPostController extends BaseController {
         try {
             this.isAuthorized(req);
             const post_id = this.parseId(req.params.post_id);
-            await this.model.destroy({ where: { creator_id: req.auth.id, post_id } });
+            await this.model.sequelize.transaction(async (transaction) => {
+                const removed = await this.model.destroy({ where: { creator_id: req.auth.id, post_id }, transaction });
+                if (removed) await recordPostInsightEvent({ post_id, actor_id: req.auth.id, event_type: 'unsave', transaction });
+            });
             return res.status(200).json({ success: true, message: 'Moment removed from saved', data: { saved: false, post_id } });
         } catch (error) { return next(error); }
     }
